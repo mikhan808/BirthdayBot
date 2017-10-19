@@ -12,12 +12,15 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Date;
+import java.util.Map;
 import java.util.Properties;
 
 /**
  * Created by МишаИОля on 15.10.2017.
  */
 public class Example extends TelegramLongPollingBot {
+    Map<Long,Chat> chatMap;
+
     @Override
     public void onUpdateReceived(Update update) {
         Message msg = update.getMessage();// Это нам понадобится
