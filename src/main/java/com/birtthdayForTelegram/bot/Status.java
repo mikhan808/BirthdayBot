@@ -8,4 +8,5 @@ public class Status {
   public static final int TELEFON = 4;
   public static final int BIRTHDAY = 5;
   public static final int DESCRIPTION = 6;
+  public static final int SEND_TO = 7;
 }
