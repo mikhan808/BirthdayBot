@@ -230,7 +230,7 @@ public class Example extends TelegramLongPollingBot {
             }
             query += ")";
             st.executeUpdate(query);
-            con.commit();
+            //con.commit();
             st.close();
             con.close();
         } catch (Exception e) {
@@ -246,7 +246,7 @@ public class Example extends TelegramLongPollingBot {
                     "SET " + field + " = '" + data + "'\n" +
                     "where CHAT =  " + chat.getId();
             st.executeUpdate(query);
-            con.commit();
+            //con.commit();
             st.close();
             con.close();
         } catch (Exception e) {
@@ -267,7 +267,7 @@ public class Example extends TelegramLongPollingBot {
                     "DESCRIPTION = NULL\n" +
                     "where CHAT =  " + chat.getId();
             st.executeUpdate(query);
-            con.commit();
+            //con.commit();
             st.close();
             con.close();
         } catch (Exception e) {
@@ -284,7 +284,7 @@ public class Example extends TelegramLongPollingBot {
                     "SET STATUS = " + status + "\n" +
                     "where CHAT =  " + chat.getId();
             st.executeUpdate(query);
-            con.commit();
+            //con.commit();
             st.close();
             con.close();
         } catch (Exception e) {
@@ -298,7 +298,7 @@ public class Example extends TelegramLongPollingBot {
             Statement st = con.createStatement();
             String query = "delete from CHATS where ID =  " + chat.getId();
             st.executeUpdate(query);
-            con.commit();
+            //con.commit();
             st.close();
             con.close();
         } catch (Exception e) {
@@ -348,7 +348,7 @@ public class Example extends TelegramLongPollingBot {
             Statement st = con.createStatement();
             String query = "INSERT INTO CHATS VALUES ( " + chat.getId() + ", '" + chat.getFirstName() + " " + chat.getLastName() + "', '" + chat.getUserName() + "' )";
             st.executeUpdate(query);
-            con.commit();
+            //con.commit();
             st.close();
             con.close();
         } catch (Exception e) {
@@ -366,7 +366,7 @@ public class Example extends TelegramLongPollingBot {
             st.executeUpdate(query);
             query = "INSERT INTO DIALOGS_DATA(CHAT )  VALUES ( " + chat.getId() + ")";
             st.executeUpdate(query);
-            con.commit();
+            //con.commit();
             st.close();
             con.close();
         } catch (Exception e) {
