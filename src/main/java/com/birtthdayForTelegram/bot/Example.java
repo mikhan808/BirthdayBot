@@ -121,7 +121,7 @@ public class Example extends TelegramLongPollingBot {
                         break;
                     case Status.SEND_TO:
                         String[] res = getDataForInsertBirthday(chat);
-                        Long id_to = Long.parseLong(res[6].trim());
+                        Long id_to = Long.parseLong(res[6].trim().replace("'",""));
                         updateStatus(chat,Status.NORMAL);
                         sendMsg(id_to,txt);
                         break;
