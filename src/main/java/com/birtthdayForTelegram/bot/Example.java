@@ -398,12 +398,16 @@ public class Example extends TelegramLongPollingBot {
                 String o = rs.getString(4);
                 String t = rs.getString(5);
                 String d = rs.getString(7);
-                text = f + " " + i + " " + o;
+                int v = rs.getInt(8);
+                text = f + " " + i;
+                if (o!=null)
+                    text+=" "+o;
+                text+="\n"+v+" "+getYearFormated(v);
                 if (t != null) {
-                    text += " Телефон:" + t;
+                    text += "\nТелефон:" + t;
                 }
                 if (d != null) {
-                    text += " " + d;
+                    text += "\n" + d;
                 }
                 sendMsg(msg, text);
             }
@@ -443,12 +447,16 @@ public class Example extends TelegramLongPollingBot {
                 String o = rs.getString(4);
                 String t = rs.getString(5);
                 String d = rs.getString(7);
-                text = f + " " + i + " " + o;
+                int v = rs.getInt(8);
+                text = f + " " + i;
+                if (o!=null)
+                    text+=" "+o;
+                text+="\n"+v+" "+getYearFormated(v);
                 if (t != null) {
-                    text += " Телефон:" + t;
+                    text += "\nТелефон:" + t;
                 }
                 if (d != null) {
-                    text += " " + d;
+                    text += "\n" + d;
                 }
                 sendMsg(ChatID, text);
             }
@@ -488,12 +496,16 @@ public class Example extends TelegramLongPollingBot {
                 String o = rs.getString(4);
                 String t = rs.getString(5);
                 String d = rs.getString(7);
-                text = f + " " + i + " " + o;
+                int v = rs.getInt(8);
+                text = f + " " + i;
+                if (o!=null)
+                    text+=" "+o;
+                text+="\nНа данный момент возраст:"+v+" "+getYearFormated(v);
                 if (t != null) {
-                    text += " Телефон:" + t;
+                    text += "\nТелефон:" + t;
                 }
                 if (d != null) {
-                    text += " " + d;
+                    text += "\n" + d;
                 }
                 sendMsg(msg, text);
             }
@@ -525,6 +537,24 @@ public class Example extends TelegramLongPollingBot {
                 return "дней";
         }
     }
+
+    String getYearFormated(int x) {
+        int y;
+        if (x % 100 > 20)
+            y = x % 10;
+        else y = x % 100;
+        switch (y) {
+            case 1:
+                return "год";
+            case 2:
+            case 3:
+            case 4:
+                return "года";
+            default:
+                return "лет";
+        }
+    }
+
 
     void getBirthday(Message msg, String name) {
         try {
