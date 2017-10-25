@@ -111,10 +111,12 @@ public class Example extends TelegramLongPollingBot {
                     case Status.BIRTHDAY:
                         updateDataRecord(chat, "BIRTHDAY", txt);
                         updateStatus(chat, Status.DESCRIPTION);
-                        sendMsg(id, "Введите краткое описание добавляемого человека (например: Старший сын Ивана и Алены живет в г.Москва)");
+                        sendMsg(id, "Введите краткое описание добавляемого человека (например: Старший сын Ивана и Алены живет в г.Москва) или," +
+                            " если вы ничего не знаете о человеке, отправьте ?");
                         break;
                     case Status.DESCRIPTION:
-                        updateDataRecord(chat, "DESCRIPTION", txt);
+                        if (txt.trim().indexOf("?")!=0)
+                            updateDataRecord(chat, "DESCRIPTION", txt);
                         insertBirthday(chat);
                         updateStatus(chat, Status.NORMAL);
                         sendMsg(id, "Человек добавлен");
