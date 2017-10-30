@@ -53,11 +53,11 @@ public class Example extends TelegramLongPollingBot {
                                 sendMsg(msg, "после ! должны идти только цифры");
                             }
                         } else if (txt.indexOf("+") == 0) {
-                            addNew(msg.getChat());
-                            sendMsg(msg, "Теперь в 8.00 вам будут приходить сообщения с именниниками");
+                            updateStatus(chat, Status.TIME_TO_SEND);
+                            sendMsg(msg, "Введите время в которое вы хотите получать оповещения в формате ЧЧ:ММ (например,08:00)");
                         } else if (txt.indexOf("-") == 0) {
                             deleteID(msg.getChat());
-                            sendMsg(msg, "Теперь в 8.00 мы вас не будем беспокоить");
+                            sendMsg(msg, "Теперь мы вас не будем беспокоить нашими оповещениями");
                         } else if (txt.equals("/add")) {
                             updateDataRecordAllNull(chat);
                             updateStatus(chat, Status.FAMILIYA);
@@ -126,6 +126,11 @@ public class Example extends TelegramLongPollingBot {
                         Long id_to = Long.parseLong(res[6].trim().replace("'",""));
                         updateStatus(chat,Status.NORMAL);
                         sendMsg(id_to,txt);
+                        break;
+                    case Status.TIME_TO_SEND:
+                        addNew(msg);
+                        sendMsg(msg, "Теперь в "+txt+" вам будут приходить сообщения с именниниками");
+                        updateStatus(chat,Status.NORMAL);
                         break;
 
 
@@ -340,19 +345,31 @@ public class Example extends TelegramLongPollingBot {
         }
     }
 
-    void addNew(Chat chat) {
+    void addNew(Message msg) {
         try {
-            Properties connInfo = new Properties();
-            connInfo.put("user", "SYSDBA");
-            connInfo.put("password", "masterkey");
-            connInfo.put("charSet", "Cp1251");
-            Connection con = DriverManager.getConnection("jdbc:firebirdsql://localhost:3050//home/mikhan808/databases/BIRTH (2).FDB", connInfo);
+            Chat chat=msg.getChat();
+            Connection con = getConnection();
             Statement st = con.createStatement();
-            String query = "INSERT INTO CHATS VALUES ( " + chat.getId() + ", '" + chat.getFirstName() + " " + chat.getLastName() + "', '" + chat.getUserName() + "' )";
-            st.executeUpdate(query);
-            //con.commit();
-            st.close();
-            con.close();
+            String query = "SELECT * FROM CHATS WHERE ID = "+chat.getId();
+            ResultSet rs = st.executeQuery(query);
+            if (rs.next())
+            {
+                st.close();
+                st=con.createStatement();
+                query = "update chats set time_sending='"+msg.getText()+":00' where id = "+chat.getId();
+                st.executeUpdate(query);
+                st.close();
+                con.close();
+            }
+            else {
+                st.close();
+                st=con.createStatement();
+                query = "INSERT INTO CHATS (ID,FULL_NAME,NIKNAME,TIME_SENDING) VALUES ( " + chat.getId() + ", '" + chat.getFirstName() + " " + chat.getLastName() + "', '" + chat.getUserName() + "', '"+msg.getText()+"' )";
+                st.executeUpdate(query);
+                //con.commit();
+                st.close();
+                con.close();
+            }
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }

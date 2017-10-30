@@ -9,4 +9,5 @@ public class Status {
   public static final int BIRTHDAY = 5;
   public static final int DESCRIPTION = 6;
   public static final int SEND_TO = 7;
+  public static final int TIME_TO_SEND = 8;
 }
