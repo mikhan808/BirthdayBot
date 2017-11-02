@@ -583,7 +583,7 @@ public class Example extends TelegramLongPollingBot {
             connInfo.put("charSet", "Cp1251");
             Connection con = DriverManager.getConnection("jdbc:firebirdsql://localhost:3050//home/mikhan808/databases/BIRTH (2).FDB", connInfo);
             Statement st = con.createStatement();
-            String query = "select * from PEOPLE where IMYA='" + name + "'";
+            String query = "select * from PEOPLE where UPPER(IMYA)='" + name.trim().toUpperCase() + "'";
             ResultSet rs = st.executeQuery(query);
             boolean first = true;
             while (rs.next()) {
