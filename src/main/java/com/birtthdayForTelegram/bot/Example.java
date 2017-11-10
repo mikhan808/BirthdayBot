@@ -567,7 +567,7 @@ public class Example extends TelegramLongPollingBot {
         if (d != null) {
           text += "\n" + d;
         }
-        text += "\n№" + id;
+        //text += "\n№" + id;
         sendMsg(ChatID, text);
       }
       if (first) {
