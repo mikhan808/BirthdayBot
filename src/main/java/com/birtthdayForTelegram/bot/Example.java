@@ -567,7 +567,7 @@ public class Example extends TelegramLongPollingBot {
       connInfo.put("charSet", "Cp1251");
       Connection con = DriverManager.getConnection("jdbc:firebirdsql://localhost:3050//home/mikhan808/databases/BIRTH (2).FDB", connInfo);
       Statement st = con.createStatement();
-      String query = "select * from VIEW_PEOPLE AS V LEFT JOIN PEOPLE P ON P.ID = V.PEOPLE_ID  where V.CHAT_ID = " + ChatID + " and where extract( month from P.BIRTHDAY) = EXTRACT ( month from current_date)\n" +
+      String query = "select * from VIEW_PEOPLE AS V LEFT JOIN PEOPLE P ON P.ID = V.PEOPLE_ID  where V.CHAT_ID = " + ChatID + " and extract( month from P.BIRTHDAY) = EXTRACT ( month from current_date)\n" +
           "and extract( day from P.BIRTHDAY) = EXTRACT ( day from current_date) ";
       ResultSet rs = st.executeQuery(query);
       boolean first = true;
