@@ -20,26 +20,18 @@ public class SendToTime implements Runnable {
   public void run() {
     while (true) {
       try {
-        Connection con = Example.getConnection();
-        Statement st = con.createStatement();
         String query = "select * from CHATS where NEED_IN_SENDING = 1";
         List<Long> idChats = new ArrayList<>();
-        ResultSet rs = st.executeQuery(query);
+        ResultSet rs = Example.getResultSet(query);
         while (rs.next()) {
           idChats.add(rs.getLong(1));
         }
-        rs.close();
-        st.close();
-        con.close();
+        Example.releaseResources(rs);
         for (Long id : idChats) {
           bot.getBirthday(id);
           try{
-            con = Example.getConnection();
-            st = con.createStatement();
             query = "update chats set time_last_sending=current_timestamp where id = "+id;
-            st.executeUpdate(query);
-            st.close();
-            con.close();
+            Example.executeUpdate(query);
           }
           catch (Exception e)
           {

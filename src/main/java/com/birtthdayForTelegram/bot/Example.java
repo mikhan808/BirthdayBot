@@ -21,18 +21,17 @@ public class Example extends TelegramLongPollingBot {
     Message msg = update.getMessage();// Это нам понадобится
     Long id = msg.getChatId();
     Chat chat = msg.getChat();
-    Connection con = getConnection();
     int status;
     try {
-      Statement st = con.createStatement();
       String query = "SELECT * FROM DIALOGS WHERE CHAT = " + id;
-      ResultSet rs = st.executeQuery(query);
+      ResultSet rs = getResultSet(query);
       if (rs.next()) {
         status = rs.getInt(2);
       } else {
         addNewChatAndDialog(chat);
         status = Status.NORMAL;
       }
+      releaseResources(rs);
       String txt = msg.getText();
       if (txt.equals("/cancel"))
         updateStatus(chat, Status.NORMAL);
@@ -171,20 +170,67 @@ public class Example extends TelegramLongPollingBot {
       return null;
     }
   }
+  public static Statement getStatement() {
+    try {
+      return getConnection().createStatement();
+    } catch (Exception e) {
+      System.out.println(e.getMessage());
+      return null;
+    }
+  }
+
+  public static ResultSet getResultSet(String query)
+  {
+    try {
+      return getStatement().executeQuery(query);
+    } catch (Exception e) {
+      System.out.println(e.getMessage());
+      return null;
+    }
+  }
+  public static void executeUpdate(String query)
+  {
+    Statement st=null;
+    try {
+      st = getStatement();
+      st.executeUpdate(query);
+    } catch (Exception e) {
+      System.out.println(e.getMessage());
+    }
+    finally {
+      releaseResources(st);
+    }
+  }
+
+  public static void releaseResources(Statement st)
+  {
+    try {
+      Connection con = st.getConnection();
+      con.close();
+    } catch (SQLException e) {
+      System.out.println(e.getMessage());
+    }
+  }
+
+  public static void releaseResources(ResultSet rs)
+  {
+    try {
+      Statement st = rs.getStatement();
+      releaseResources(st);
+    } catch (SQLException e) {
+      System.out.println(e.getMessage());
+    }
+  }
 
   void sendAdmin(Chat chat, String txt) {
     try {
-      Connection con = getConnection();
-      Statement st = con.createStatement();
       String query = "select * from CHAT_INFO where NICKNAME = 'mikhan808'";
       Long id = (long) 0;
-      ResultSet rs = st.executeQuery(query);
+      ResultSet rs = getResultSet(query);
       while (rs.next()) {
         id = rs.getLong(1);
       }
-      rs.close();
-      st.close();
-      con.close();
+      releaseResources(rs);
       txt = "ID=" + chat.getId() + "\n" +
           "Имя:" + chat.getFirstName() + " " + chat.getLastName() + "\n" + txt;
       sendMsg(id, txt);
@@ -197,16 +243,12 @@ public class Example extends TelegramLongPollingBot {
   List<Long> allChats() {
     List<Long> idChats = new ArrayList<>();
     try {
-      Connection con = getConnection();
-      Statement st = con.createStatement();
       String query = "select * from CHAT_INFO";
-      ResultSet rs = st.executeQuery(query);
+      ResultSet rs = getResultSet(query);
       while (rs.next()) {
         idChats.add(rs.getLong(1));
       }
-      rs.close();
-      st.close();
-      con.close();
+      releaseResources(rs);
     } catch (Exception e) {
       System.out.println(e.getMessage());
     }
@@ -229,10 +271,8 @@ public class Example extends TelegramLongPollingBot {
     for (String s : res)
       s = "NULL";
     try {
-      Connection con = getConnection();
-      Statement st = con.createStatement();
       String query = "SELECT * FROM DIALOGS_DATA WHERE CHAT = " + chat.getId();
-      ResultSet rs = st.executeQuery(query);
+      ResultSet rs = getResultSet(query);
       if (rs.next()) {
         for (int i = 2; i < 8; i++) {
           String temp = rs.getString(i);
@@ -240,9 +280,7 @@ public class Example extends TelegramLongPollingBot {
             res[i - 1] = "'" + temp + "'";
         }
       }
-      rs.close();
-      st.close();
-      con.close();
+      releaseResources(rs);
       return res;
     } catch (Exception e) {
       System.out.println(e.getMessage());
@@ -263,16 +301,12 @@ public class Example extends TelegramLongPollingBot {
   int getPeopleID(String full_name, String d) {
     int res = -1;
     try {
-      Connection con = getConnection();
-      Statement st = con.createStatement();
       String query = "select * from PEOPLE where FULL_NAME = '" + full_name + "' and BIRTHDAY = '" + d + "'";
-      ResultSet rs = st.executeQuery(query);
+      ResultSet rs = getResultSet(query);
       if (rs.next()) {
         res = rs.getInt(1);
       }
-      rs.close();
-      st.close();
-      con.close();
+      releaseResources(rs);
     } catch (Exception e) {
       System.out.println(e.getMessage());
     }
@@ -281,8 +315,6 @@ public class Example extends TelegramLongPollingBot {
 
   void insertBirthday(Chat chat, boolean public_man) {
     try {
-      Connection con = getConnection();
-      Statement st = con.createStatement();
       String[] res = getDataForInsertBirthday(chat);
       String query = "INSERT INTO PEOPLE VALUES (\n";
       for (int i = 0; i < res.length; i++) {
@@ -292,7 +324,7 @@ public class Example extends TelegramLongPollingBot {
       }
       query += ")";
       try {
-        st.executeUpdate(query);
+        executeUpdate(query);
       } catch (Exception e) {
         System.out.println(e.getMessage());
       }
@@ -300,17 +332,15 @@ public class Example extends TelegramLongPollingBot {
       if (public_man) {
         List<Long> chats = allChats();
         query = "INSERT INTO PUBLIC_PEOPLE VALUES (" + id + " )";
-        st.executeUpdate(query);
+        executeUpdate(query);
         for (Long c : chats) {
           query = "INSERT INTO VIEW_PEOPLE VALUES (" + c + " , " + id + " )";
-          st.executeUpdate(query);
+          executeUpdate(query);
         }
       } else {
         query = "INSERT INTO VIEW_PEOPLE VALUES (" + chat.getId() + " , " + id + " )";
-        st.executeUpdate(query);
+        executeUpdate(query);
       }
-      st.close();
-      con.close();
     } catch (Exception e) {
       System.out.println(e.getMessage());
     }
@@ -318,15 +348,10 @@ public class Example extends TelegramLongPollingBot {
 
   void updateDataRecord(Chat chat, String field, String data) {
     try {
-      Connection con = getConnection();
-      Statement st = con.createStatement();
       String query = "UPDATE DIALOGS_DATA\n" +
           "SET " + field + " = '" + data + "'\n" +
           "where CHAT =  " + chat.getId();
-      st.executeUpdate(query);
-      //con.commit();
-      st.close();
-      con.close();
+      executeUpdate(query);
     } catch (Exception e) {
       System.out.println(e.getMessage());
     }
@@ -334,8 +359,6 @@ public class Example extends TelegramLongPollingBot {
 
   void updateDataRecordAllNull(Chat chat) {
     try {
-      Connection con = getConnection();
-      Statement st = con.createStatement();
       String query = "UPDATE DIALOGS_DATA\n" +
           "SET FAMILIYA = NULL,\n" +
           "IMYA = NULL,\n" +
@@ -344,10 +367,7 @@ public class Example extends TelegramLongPollingBot {
           "BIRTHDAY = NULL,\n" +
           "DESCRIPTION = NULL\n" +
           "where CHAT =  " + chat.getId();
-      st.executeUpdate(query);
-      //con.commit();
-      st.close();
-      con.close();
+      executeUpdate(query);
     } catch (Exception e) {
       System.out.println(e.getMessage());
     }
@@ -356,15 +376,10 @@ public class Example extends TelegramLongPollingBot {
 
   void updateStatus(Chat chat, int status) {
     try {
-      Connection con = getConnection();
-      Statement st = con.createStatement();
       String query = "UPDATE DIALOGS\n" +
           "SET STATUS = " + status + "\n" +
           "where CHAT =  " + chat.getId();
-      st.executeUpdate(query);
-      //con.commit();
-      st.close();
-      con.close();
+      executeUpdate(query);
     } catch (Exception e) {
       System.out.println(e.getMessage());
     }
@@ -373,14 +388,11 @@ public class Example extends TelegramLongPollingBot {
   String getFullNamePeople(int id) {
     String res = "Никакой Никак Никакович";
     try {
-      Connection con = getConnection();
-      Statement st = con.createStatement();
       String query = "select FULL_NAME from PEOPLE where ID =  " + id;
-      ResultSet rs = st.executeQuery(query);
+      ResultSet rs = getResultSet(query);
       if (rs.next())
         res = rs.getString(1);
-      st.close();
-      con.close();
+      releaseResources(rs);
     } catch (Exception e) {
       System.out.println(e.getMessage());
     }
@@ -389,12 +401,8 @@ public class Example extends TelegramLongPollingBot {
 
   void deletePeople(Chat chat, int id) {
     try {
-      Connection con = getConnection();
-      Statement st = con.createStatement();
       String query = "delete from VIEW_PEOPLE where CHAT_ID =  " + chat.getId() + " AND PEOPLE_ID = " + id;
-      st.executeUpdate(query);
-      st.close();
-      con.close();
+      executeUpdate(query);
     } catch (Exception e) {
       System.out.println(e.getMessage());
     }
@@ -403,13 +411,8 @@ public class Example extends TelegramLongPollingBot {
 
   void deleteID(Chat chat) {
     try {
-      Connection con = getConnection();
-      Statement st = con.createStatement();
       String query = "delete from CHATS where ID =  " + chat.getId();
-      st.executeUpdate(query);
-      //con.commit();
-      st.close();
-      con.close();
+      executeUpdate(query);
     } catch (Exception e) {
       System.out.println(e.getMessage());
     }
@@ -450,26 +453,16 @@ public class Example extends TelegramLongPollingBot {
   void addNew(Message msg) {
     try {
       Chat chat = msg.getChat();
-      Connection con = getConnection();
-      Statement st = con.createStatement();
       String query = "SELECT * FROM CHATS WHERE ID = " + chat.getId();
-      ResultSet rs = st.executeQuery(query);
+      ResultSet rs = getResultSet(query);
       if (rs.next()) {
-        st.close();
-        st = con.createStatement();
         query = "update chats set time_sending='" + msg.getText() + ":00' where id = " + chat.getId();
-        st.executeUpdate(query);
-        st.close();
-        con.close();
+        executeUpdate(query);
       } else {
-        st.close();
-        st = con.createStatement();
         query = "INSERT INTO CHATS (ID,FULL_NAME,NIKNAME,TIME_SENDING) VALUES ( " + chat.getId() + ", '" + chat.getFirstName() + " " + chat.getLastName() + "', '" + chat.getUserName() + "', '" + msg.getText() + "' )";
-        st.executeUpdate(query);
-        //con.commit();
-        st.close();
-        con.close();
+        executeUpdate(query);
       }
+      releaseResources(rs);
     } catch (Exception e) {
       System.out.println(e.getMessage());
     }
@@ -477,14 +470,11 @@ public class Example extends TelegramLongPollingBot {
 
   void addNewPublic(Long chat) {
     try {
-      Connection con = getConnection();
-      Statement st = con.createStatement();
-      Connection con1 = getConnection();
-      Statement st1 = con1.createStatement();
-      ResultSet rs = st.executeQuery("SELECT * FROM PUBLIC_PEOPLE");
+      ResultSet rs = getResultSet("SELECT * FROM PUBLIC_PEOPLE");
       while (rs.next()) {
-        st1.executeUpdate("INSERT INTO VIEW_PEOPLE VALUES (" + chat + " , " + rs.getInt(1) + " )");
+        executeUpdate("INSERT INTO VIEW_PEOPLE VALUES (" + chat + " , " + rs.getInt(1) + " )");
       }
+      releaseResources(rs);
     } catch (SQLException e) {
       e.printStackTrace();
     }
@@ -492,17 +482,13 @@ public class Example extends TelegramLongPollingBot {
 
   void addNewChatAndDialog(Chat chat) {
     try {
-      Connection con = getConnection();
-      Statement st = con.createStatement();
       String query = "INSERT INTO CHAT_INFO VALUES ( " + chat.getId() + ", '" + chat.getFirstName() + " " + chat.getLastName() + "', '" + chat.getUserName() + "' )";
-      st.executeUpdate(query);
+      executeUpdate(query);
       query = "INSERT INTO DIALOGS VALUES ( " + chat.getId() + ", 0 )";
-      st.executeUpdate(query);
+      executeUpdate(query);
       query = "INSERT INTO DIALOGS_DATA(CHAT )  VALUES ( " + chat.getId() + ")";
-      st.executeUpdate(query);
+      executeUpdate(query);
       addNewPublic(chat.getId());
-      st.close();
-      con.close();
     } catch (Exception e) {
       System.out.println(e.getMessage());
     }
@@ -510,15 +496,9 @@ public class Example extends TelegramLongPollingBot {
 
   void getBirthday(Message msg) {
     try {
-      Properties connInfo = new Properties();
-      connInfo.put("user", "SYSDBA");
-      connInfo.put("password", "masterkey");
-      connInfo.put("charSet", "Cp1251");
-      Connection con = DriverManager.getConnection("jdbc:firebirdsql://localhost:3050//home/mikhan808/databases/BIRTH (2).FDB", connInfo);
-      Statement st = con.createStatement();
       String query = "select * from VIEW_PEOPLE AS V LEFT JOIN PEOPLE P ON P.ID = V.PEOPLE_ID  where V.CHAT_ID = " + msg.getChatId() + " and extract( month from P.BIRTHDAY) = EXTRACT ( month from current_date)\n" +
           "and extract( day from P.BIRTHDAY) = EXTRACT ( day from current_date) ";
-      ResultSet rs = st.executeQuery(query);
+      ResultSet rs = getResultSet(query);
       boolean first = true;
       while (rs.next()) {
         if (first) {
@@ -551,9 +531,7 @@ public class Example extends TelegramLongPollingBot {
         String t = "В нашем списке отсутствуют люди отмечающие сегодня день рождения.";
         sendMsg(msg, t);
       }
-      rs.close();
-      st.close();
-      con.close();
+      releaseResources(rs);
     } catch (Exception e) {
       sendMsg(msg, e.getMessage());
     }
@@ -561,15 +539,9 @@ public class Example extends TelegramLongPollingBot {
 
   void getBirthday(Long ChatID) {
     try {
-      Properties connInfo = new Properties();
-      connInfo.put("user", "SYSDBA");
-      connInfo.put("password", "masterkey");
-      connInfo.put("charSet", "Cp1251");
-      Connection con = DriverManager.getConnection("jdbc:firebirdsql://localhost:3050//home/mikhan808/databases/BIRTH (2).FDB", connInfo);
-      Statement st = con.createStatement();
       String query = "select * from VIEW_PEOPLE AS V LEFT JOIN PEOPLE P ON P.ID = V.PEOPLE_ID  where V.CHAT_ID = " + ChatID + " and extract( month from P.BIRTHDAY) = EXTRACT ( month from current_date)\n" +
           "and extract( day from P.BIRTHDAY) = EXTRACT ( day from current_date) ";
-      ResultSet rs = st.executeQuery(query);
+      ResultSet rs = getResultSet(query);
       boolean first = true;
       while (rs.next()) {
         if (first) {
@@ -600,11 +572,8 @@ public class Example extends TelegramLongPollingBot {
       }
       if (first) {
         String t = "В нашем списке отсутствуют люди отмечающие сегодня день рождения.";
-        //sendMsg(msg,t);
       }
-      rs.close();
-      st.close();
-      con.close();
+      releaseResources(rs);
     } catch (Exception e) {
       sendMsg(ChatID, e.getMessage());
     }
@@ -612,15 +581,9 @@ public class Example extends TelegramLongPollingBot {
 
   void getBirthday(Message msg, int x) {
     try {
-      Properties connInfo = new Properties();
-      connInfo.put("user", "SYSDBA");
-      connInfo.put("password", "masterkey");
-      connInfo.put("charSet", "Cp1251");
-      Connection con = DriverManager.getConnection("jdbc:firebirdsql://localhost:3050//home/mikhan808/databases/BIRTH (2).FDB", connInfo);
-      Statement st = con.createStatement();
       String query = "select * from VIEW_PEOPLE AS V LEFT JOIN PEOPLE P ON P.ID = V.PEOPLE_ID  where V.CHAT_ID = " + msg.getChatId() + " and extract( month from P.BIRTHDAY) = EXTRACT ( month from current_date+" + x + ")\n" +
           "and extract( day from P.BIRTHDAY) = EXTRACT ( day from current_date+" + x + ") ";
-      ResultSet rs = st.executeQuery(query);
+      ResultSet rs = getResultSet(query);
       boolean first = true;
       while (rs.next()) {
         if (first) {
@@ -653,9 +616,7 @@ public class Example extends TelegramLongPollingBot {
         String t = "В нашем списке отсутствуют люди отмечающие день рождения через " + x + " " + getDayFormated(x) + ".";
         sendMsg(msg, t);
       }
-      rs.close();
-      st.close();
-      con.close();
+      releaseResources(rs);
     } catch (Exception e) {
       sendMsg(msg, e.getMessage());
     }
@@ -698,14 +659,8 @@ public class Example extends TelegramLongPollingBot {
 
   void getBirthdayOfName(Message msg, String name) {
     try {
-      Properties connInfo = new Properties();
-      connInfo.put("user", "SYSDBA");
-      connInfo.put("password", "masterkey");
-      connInfo.put("charSet", "Cp1251");
-      Connection con = DriverManager.getConnection("jdbc:firebirdsql://localhost:3050//home/mikhan808/databases/BIRTH (2).FDB", connInfo);
-      Statement st = con.createStatement();
       String query = "select * from VIEW_PEOPLE AS V LEFT JOIN PEOPLE P ON P.ID = V.PEOPLE_ID  where V.CHAT_ID = " + msg.getChatId() + " and UPPER(P.IMYA)='" + name.trim().toUpperCase() + "'";
-      ResultSet rs = st.executeQuery(query);
+      ResultSet rs = getResultSet(query);
       boolean first = true;
       while (rs.next()) {
         if (first) {
@@ -735,9 +690,7 @@ public class Example extends TelegramLongPollingBot {
         String t = "В нашем списке отсутствуют люди с именем " + name;
         sendMsg(msg, t);
       }
-      rs.close();
-      st.close();
-      con.close();
+      releaseResources(rs);
     } catch (Exception e) {
       sendMsg(msg, e.getMessage());
     }
