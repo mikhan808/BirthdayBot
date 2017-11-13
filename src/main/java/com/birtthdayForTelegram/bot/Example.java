@@ -18,7 +18,7 @@ public class Example extends TelegramLongPollingBot {
 
   @Override
   public void onUpdateReceived(Update update) {
-    Message msg = update.getMessage();// Это нам понадобится
+    Message msg = update.getMessage();
     Long id = msg.getChatId();
     Chat chat = msg.getChat();
     int status;
@@ -145,6 +145,7 @@ public class Example extends TelegramLongPollingBot {
               deletePeople(chat, x);
               updateStatus(chat, Status.NORMAL);
             } catch (Exception e) {
+              Log.error(e.getMessage());
               sendMsg(msg, "В сообщении должны содержаться только цифры, если вы передумали отправьте /cancel");
             }
             break;
@@ -153,6 +154,7 @@ public class Example extends TelegramLongPollingBot {
         }
 
     } catch (Exception e) {
+      Log.error(e.getMessage());
       sendMsg(msg, "Ошибка: " + e.getMessage());
     }
 
@@ -166,59 +168,58 @@ public class Example extends TelegramLongPollingBot {
       connInfo.put("charSet", "Cp1251");
       return DriverManager.getConnection("jdbc:firebirdsql://localhost:3050//home/mikhan808/databases/BIRTH (2).FDB", connInfo);
     } catch (Exception e) {
-      System.out.println(e.getMessage());
+      Log.error(e.getMessage());
       return null;
     }
   }
+
   public static Statement getStatement() {
     try {
       return getConnection().createStatement();
     } catch (Exception e) {
-      System.out.println(e.getMessage());
+      Log.error(e.getMessage());
       return null;
     }
   }
 
-  public static ResultSet getResultSet(String query)
-  {
+  public static ResultSet getResultSet(String query) {
+    Log.add("Executing:"+query);
     try {
       return getStatement().executeQuery(query);
     } catch (Exception e) {
-      System.out.println(e.getMessage());
+      Log.error(e.getMessage());
       return null;
     }
   }
-  public static void executeUpdate(String query)
-  {
-    Statement st=null;
+
+  public static void executeUpdate(String query) {
+    Log.add("Executing:"+query);
+    Statement st = null;
     try {
       st = getStatement();
       st.executeUpdate(query);
     } catch (Exception e) {
-      System.out.println(e.getMessage());
-    }
-    finally {
+      Log.error(e.getMessage());
+    } finally {
       releaseResources(st);
     }
   }
 
-  public static void releaseResources(Statement st)
-  {
+  public static void releaseResources(Statement st) {
     try {
       Connection con = st.getConnection();
       con.close();
     } catch (SQLException e) {
-      System.out.println(e.getMessage());
+      Log.error(e.getMessage());
     }
   }
 
-  public static void releaseResources(ResultSet rs)
-  {
+  public static void releaseResources(ResultSet rs) {
     try {
       Statement st = rs.getStatement();
       releaseResources(st);
     } catch (SQLException e) {
-      System.out.println(e.getMessage());
+      Log.error(e.getMessage());
     }
   }
 
@@ -236,7 +237,7 @@ public class Example extends TelegramLongPollingBot {
       sendMsg(id, txt);
 
     } catch (Exception e) {
-      System.out.println(e.getMessage());
+      Log.error(e.getMessage());
     }
   }
 
@@ -250,7 +251,7 @@ public class Example extends TelegramLongPollingBot {
       }
       releaseResources(rs);
     } catch (Exception e) {
-      System.out.println(e.getMessage());
+      Log.error(e.getMessage());
     }
     return idChats;
   }
@@ -262,14 +263,14 @@ public class Example extends TelegramLongPollingBot {
         sendMsg(id, txt);
       }
     } catch (Exception e) {
-      System.out.println(e.getMessage());
+      Log.error(e.getMessage());
     }
   }
 
   String[] getDataForInsertBirthday(Chat chat) {
     String[] res = new String[7];
-    for (String s : res)
-      s = "NULL";
+    for (int i = 0; i < 7; i++)
+      res[i] = "NULL";
     try {
       String query = "SELECT * FROM DIALOGS_DATA WHERE CHAT = " + chat.getId();
       ResultSet rs = getResultSet(query);
@@ -283,7 +284,7 @@ public class Example extends TelegramLongPollingBot {
       releaseResources(rs);
       return res;
     } catch (Exception e) {
-      System.out.println(e.getMessage());
+      Log.error(e.getMessage());
       return res;
     }
   }
@@ -308,7 +309,7 @@ public class Example extends TelegramLongPollingBot {
       }
       releaseResources(rs);
     } catch (Exception e) {
-      System.out.println(e.getMessage());
+      Log.error(e.getMessage());
     }
     return res;
   }
@@ -326,9 +327,12 @@ public class Example extends TelegramLongPollingBot {
       try {
         executeUpdate(query);
       } catch (Exception e) {
-        System.out.println(e.getMessage());
+        Log.error(e.getMessage());
       }
-      int id = getPeopleID(res[1].replace("'", ""), res[2].replace("'", ""), res[3].replace("'", ""), res[5].replace("'", ""));
+      int id;
+      if (res[3] != null)
+        id = getPeopleID(res[1].replace("'", ""), res[2].replace("'", ""), res[3].replace("'", ""), res[5].replace("'", ""));
+      else id = getPeopleID(res[1].replace("'", ""), res[2].replace("'", ""), res[5].replace("'", ""));
       if (public_man) {
         List<Long> chats = allChats();
         query = "INSERT INTO PUBLIC_PEOPLE VALUES (" + id + " )";
@@ -342,7 +346,7 @@ public class Example extends TelegramLongPollingBot {
         executeUpdate(query);
       }
     } catch (Exception e) {
-      System.out.println(e.getMessage());
+      Log.error(e.getMessage());
     }
   }
 
@@ -353,7 +357,7 @@ public class Example extends TelegramLongPollingBot {
           "where CHAT =  " + chat.getId();
       executeUpdate(query);
     } catch (Exception e) {
-      System.out.println(e.getMessage());
+      Log.error(e.getMessage());
     }
   }
 
@@ -369,7 +373,7 @@ public class Example extends TelegramLongPollingBot {
           "where CHAT =  " + chat.getId();
       executeUpdate(query);
     } catch (Exception e) {
-      System.out.println(e.getMessage());
+      Log.error(e.getMessage());
     }
   }
 
@@ -381,7 +385,7 @@ public class Example extends TelegramLongPollingBot {
           "where CHAT =  " + chat.getId();
       executeUpdate(query);
     } catch (Exception e) {
-      System.out.println(e.getMessage());
+      Log.error(e.getMessage());
     }
   }
 
@@ -394,7 +398,7 @@ public class Example extends TelegramLongPollingBot {
         res = rs.getString(1);
       releaseResources(rs);
     } catch (Exception e) {
-      System.out.println(e.getMessage());
+      Log.error(e.getMessage());
     }
     return res;
   }
@@ -404,7 +408,7 @@ public class Example extends TelegramLongPollingBot {
       String query = "delete from VIEW_PEOPLE where CHAT_ID =  " + chat.getId() + " AND PEOPLE_ID = " + id;
       executeUpdate(query);
     } catch (Exception e) {
-      System.out.println(e.getMessage());
+     Log.error(e.getMessage());
     }
     sendMsg(chat.getId(), "Мы вам больше не будем присылать сообщения о человеке, которого зовут:\n" + getFullNamePeople(id));
   }
@@ -414,7 +418,7 @@ public class Example extends TelegramLongPollingBot {
       String query = "delete from CHATS where ID =  " + chat.getId();
       executeUpdate(query);
     } catch (Exception e) {
-      System.out.println(e.getMessage());
+      Log.error(e.getMessage());
     }
   }
 
@@ -464,7 +468,7 @@ public class Example extends TelegramLongPollingBot {
       }
       releaseResources(rs);
     } catch (Exception e) {
-      System.out.println(e.getMessage());
+      Log.error(e.getMessage());
     }
   }
 
@@ -476,7 +480,7 @@ public class Example extends TelegramLongPollingBot {
       }
       releaseResources(rs);
     } catch (SQLException e) {
-      e.printStackTrace();
+      Log.error(e.getMessage());
     }
   }
 
@@ -490,7 +494,7 @@ public class Example extends TelegramLongPollingBot {
       executeUpdate(query);
       addNewPublic(chat.getId());
     } catch (Exception e) {
-      System.out.println(e.getMessage());
+      Log.error(e.getMessage());
     }
   }
 
@@ -533,6 +537,7 @@ public class Example extends TelegramLongPollingBot {
       }
       releaseResources(rs);
     } catch (Exception e) {
+      Log.error(e.getMessage());
       sendMsg(msg, e.getMessage());
     }
   }
@@ -575,6 +580,7 @@ public class Example extends TelegramLongPollingBot {
       }
       releaseResources(rs);
     } catch (Exception e) {
+      Log.error(e.getMessage());
       sendMsg(ChatID, e.getMessage());
     }
   }
@@ -618,6 +624,7 @@ public class Example extends TelegramLongPollingBot {
       }
       releaseResources(rs);
     } catch (Exception e) {
+      Log.error(e.getMessage());
       sendMsg(msg, e.getMessage());
     }
   }
@@ -692,6 +699,7 @@ public class Example extends TelegramLongPollingBot {
       }
       releaseResources(rs);
     } catch (Exception e) {
+      Log.error(e.getMessage());
       sendMsg(msg, e.getMessage());
     }
   }
