@@ -170,6 +170,7 @@ public class Example extends TelegramLongPollingBot {
               }
       }
       else if(status == Status.ADD_PHOTO_2){
+          updateStatus(chat,Status.NORMAL);
           List<PhotoSize> list = msg.getPhoto();
           if(list!=null&&list.size()>0)
           {
@@ -179,12 +180,15 @@ public class Example extends TelegramLongPollingBot {
               sendMsg(msg,"Фото добавлено");
           }
 
+
+
       }
 
     } catch (Exception e) {
       Log.error(e.getMessage());
       sendMsg(msg, "Ошибка: " + e.getMessage());
     }
+
 
   }
 
