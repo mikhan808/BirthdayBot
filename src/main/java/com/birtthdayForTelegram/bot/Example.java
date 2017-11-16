@@ -174,7 +174,7 @@ public class Example extends TelegramLongPollingBot {
           if(list!=null&&list.size()>0)
           {
               String[] res = getDataForInsertBirthday(chat);
-              int x = Integer.parseInt(res[6]);
+              int x = Integer.parseInt(res[6].replace("'",""));
               addPhotoForPeopleId(x,list.get(0));
               sendMsg(msg,"Фото добавлено");
           }
