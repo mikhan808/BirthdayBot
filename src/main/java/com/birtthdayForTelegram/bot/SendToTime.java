@@ -27,7 +27,6 @@ public class SendToTime implements Runnable {
                     Runnable r = new ThreadSending(id, bot);
                     Thread t = new Thread(r);
                     t.start();
-
                 }
                 Example.releaseResources(rs);
             } catch (Exception e) {

@@ -1,12 +1,15 @@
 package com.birtthdayForTelegram.bot;
 
 import org.telegram.telegrambots.api.methods.send.SendMessage;
+import org.telegram.telegrambots.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.api.objects.Chat;
 import org.telegram.telegrambots.api.objects.Message;
 import org.telegram.telegrambots.api.objects.Update;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.exceptions.TelegramApiException;
 
+import java.io.File;
+import java.io.InputStream;
 import java.sql.*;
 import java.util.*;
 import java.util.Date;
@@ -81,7 +84,11 @@ public class Example extends TelegramLongPollingBot {
               txt = txt.substring(1);
               updateStatus(chat, Status.SEND_TO);
               updateDataRecord(chat, "DESCRIPTION", txt);
-            } else if (txt.equals("/delete")) {
+            } else if (txt.indexOf("$") == 0) {
+              txt = txt.substring(1);
+              int x = Integer.parseInt(txt);
+              sendPhotoForPeopleID(chat,x);
+            }else if (txt.equals("/delete")) {
               updateStatus(chat, Status.DELETE);
               sendMsg(id, "Введите № человека, о дне рождения, которого вы больше не хотите получать уведомления");
             } else
@@ -202,6 +209,28 @@ public class Example extends TelegramLongPollingBot {
       Log.error(e.getMessage());
     } finally {
       releaseResources(st);
+    }
+  }
+
+  void sendPhotoForPeopleID(Chat chat,int id)
+  {
+    String query = "SELECT PHOTO,FULL_NAME FROM PEOPLE WHERE ID = "+id;
+    ResultSet rs = getResultSet(query);
+    try {
+      if(rs.next())
+      {
+        Blob b = rs.getBlob(1);
+        String name = rs.getString(2);
+        if(b!=null)
+        {
+          InputStream stream = b.getBinaryStream();
+          sendPhoto(chat.getId(),stream,name);
+        }
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }finally {
+      releaseResources(rs);
     }
   }
 
@@ -438,6 +467,17 @@ public class Example extends TelegramLongPollingBot {
     s.setText(text);
     try { //Чтобы не крашнулась программа при вылете Exception
       sendMessage(s);
+    } catch (TelegramApiException e) {
+      e.printStackTrace();
+    }
+  }
+  private void sendPhoto(Long id,InputStream stream,String photoName)
+  {
+    SendPhoto s = new SendPhoto();
+    s.setChatId(id); // Боту может писать не один человек, и поэтому чтобы отправить сообщение, грубо говоря нужно узнать куда его отправлять
+    s.setNewPhoto(photoName,stream);
+    try { //Чтобы не крашнулась программа при вылете Exception
+      sendPhoto(s);
     } catch (TelegramApiException e) {
       e.printStackTrace();
     }
