@@ -4,12 +4,12 @@ import org.telegram.telegrambots.api.methods.send.SendMessage;
 import org.telegram.telegrambots.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.api.objects.Chat;
 import org.telegram.telegrambots.api.objects.Message;
+import org.telegram.telegrambots.api.objects.PhotoSize;
 import org.telegram.telegrambots.api.objects.Update;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.exceptions.TelegramApiException;
 
-import java.io.File;
-import java.io.InputStream;
+import java.io.*;
 import java.sql.*;
 import java.util.*;
 import java.util.Date;
@@ -36,129 +36,150 @@ public class Example extends TelegramLongPollingBot {
       }
       releaseResources(rs);
       String txt = msg.getText();
-      if (txt.equals("/cancel"))
-        updateStatus(chat, Status.NORMAL);
-      else
-        switch (status) {
-          case Status.NORMAL:
-            if (txt.equals("Привет"))
-              sendMsg(msg, "Привет");
-            if (txt.indexOf("#") == 0)
-              getBirthdayOfName(msg, txt.substring(1));
-            else if (txt.indexOf("!") == 0) {
-              try {
-                int x = Integer.parseInt(txt.substring(1));
-                getBirthday(msg, x);
-              } catch (Exception e) {
-                sendMsg(msg, "после ! должны идти только цифры");
-              }
-            } else if (txt.indexOf("+") == 0) {
-              updateStatus(chat, Status.TIME_TO_SEND);
-              sendMsg(msg, "Введите время в которое вы хотите получать оповещения в формате ЧЧ:ММ (например,08:00)");
-            } else if (txt.indexOf("-") == 0) {
-              deleteID(msg.getChat());
-              sendMsg(msg, "Теперь мы вас не будем беспокоить нашими оповещениями");
-            } else if (txt.equals("/add")) {
-              updateDataRecordAllNull(chat);
-              updateStatus(chat, Status.FAMILIYA);
-              sendMsg(id, "Введите фамилию добавляемого человека");
-            } else if (txt.equals("/help")) {
-              sendMsg(id, "Список команд:\n" +
-                  "/help - список команд\n" +
-                  "#Имя - список людей с указанным именем\n" +
-                  "!X - список людей празднующих день рождения, через X дней\n" +
-                  "/add - добавить человека которого нет в списке\n" +
-                  "/cancel - отменить добавление человека\n" +
-                  "/delete - оменить уведомления об определенном человеке(например которого вы не знаете)\n" +
-                  "+ - включить функцию автоматического уведомления\n" +
-                  "- - отключить функцию автоматического уведомления\n" +
-                  "?вопрос - так можно задать интересующий вопрос\n" +
-                  "любое другое сообщение - получить список людей празднущих сегодня день рождения");
-            } else if (txt.indexOf("%") == 0) {
-              txt = txt.substring(1);
-              sendAll(txt);
-            } else if (txt.indexOf("?") == 0) {
-              txt = txt.substring(1);
-              sendAdmin(chat, txt);
-            } else if (txt.indexOf("^") == 0) {
-              txt = txt.substring(1);
-              updateStatus(chat, Status.SEND_TO);
-              updateDataRecord(chat, "DESCRIPTION", txt);
-            } else if (txt.indexOf("$") == 0) {
-              txt = txt.substring(1);
-              int x = Integer.parseInt(txt);
-              sendPhotoForPeopleID(chat,x);
-            }else if (txt.equals("/delete")) {
-              updateStatus(chat, Status.DELETE);
-              sendMsg(id, "Введите № человека, о дне рождения, которого вы больше не хотите получать уведомления");
-            } else
-              getBirthday(msg);
-            break;
-          case Status.FAMILIYA:
-            updateDataRecord(chat, "FAMILIYA", txt);
-            updateStatus(chat, Status.IMYA);
-            sendMsg(id, "Введите имя добавляемого человека");
-            break;
-          case Status.IMYA:
-            updateDataRecord(chat, "IMYA", txt);
-            updateStatus(chat, Status.OTCHESTVO);
-            sendMsg(id, "Введите отчество добавляемого человека (если вы не знаете отчество человека то отправьте ?)");
-            break;
-          case Status.OTCHESTVO:
-            if (!txt.contains("?"))
-              updateDataRecord(chat, "OTCHESTVO", txt);
-            updateStatus(chat, Status.TELEFON);
-            sendMsg(id, "Введите телефон добавляемого человека (если вы не знаете телефон человека то отправьте ?)");
-            break;
-          case Status.TELEFON:
-            if (!txt.contains("?"))
-              updateDataRecord(chat, "TELEFON", txt);
-            updateStatus(chat, Status.BIRTHDAY);
-            sendMsg(id, "Введите дату рождения добавляемого человека в формате ДД.ММ.ГГГГ (например 01.01.1990)");
-            break;
-          case Status.BIRTHDAY:
-            updateDataRecord(chat, "BIRTHDAY", txt);
-            updateStatus(chat, Status.DESCRIPTION);
-            sendMsg(id, "Введите краткое описание добавляемого человека (например: Старший сын Ивана и Алены живет в г.Москва) или," +
-                " если вы ничего не знаете о человеке, отправьте ?");
-            break;
-          case Status.DESCRIPTION:
-            if (txt.trim().indexOf("?") != 0)
-              updateDataRecord(chat, "DESCRIPTION", txt);
-            updateStatus(chat, Status.PUBLIC_MAN);
-            sendMsg(id, "Если Вы не хотите чтоб другие пользователи получали информацию о добавленном человеке отправьте 0," +
-                " если же Вы не считаете это тайной отправьте 1");
-            break;
-          case Status.PUBLIC_MAN:
-            boolean pm = (txt.trim().indexOf("0") != 0);
-            insertBirthday(chat, pm);
-            updateStatus(chat, Status.NORMAL);
-            sendMsg(id, "Человек добавлен");
-            break;
-          case Status.SEND_TO:
-            String[] res = getDataForInsertBirthday(chat);
-            Long id_to = Long.parseLong(res[6].trim().replace("'", ""));
-            updateStatus(chat, Status.NORMAL);
-            sendMsg(id_to, txt);
-            break;
-          case Status.TIME_TO_SEND:
-            addNew(msg);
-            sendMsg(msg, "Теперь в " + txt + " вам будут приходить сообщения с именниниками");
-            updateStatus(chat, Status.NORMAL);
-            break;
-          case Status.DELETE:
-            try {
-              int x = Integer.parseInt(txt.trim());
-              deletePeople(chat, x);
+      if(txt!=null) {
+          if (txt.equals("/cancel"))
               updateStatus(chat, Status.NORMAL);
-            } catch (Exception e) {
-              Log.error(e.getMessage());
-              sendMsg(msg, "В сообщении должны содержаться только цифры, если вы передумали отправьте /cancel");
-            }
-            break;
+          else
+              switch (status) {
+                  case Status.NORMAL:
+                      if (txt.equals("Привет"))
+                          sendMsg(msg, "Привет");
+                      if (txt.indexOf("#") == 0)
+                          getBirthdayOfName(msg, txt.substring(1));
+                      else if (txt.indexOf("!") == 0) {
+                          try {
+                              int x = Integer.parseInt(txt.substring(1));
+                              getBirthday(msg, x);
+                          } catch (Exception e) {
+                              sendMsg(msg, "после ! должны идти только цифры");
+                          }
+                      } else if (txt.indexOf("+") == 0) {
+                          updateStatus(chat, Status.TIME_TO_SEND);
+                          sendMsg(msg, "Введите время в которое вы хотите получать оповещения в формате ЧЧ:ММ (например,08:00)");
+                      } else if (txt.indexOf("-") == 0) {
+                          deleteID(msg.getChat());
+                          sendMsg(msg, "Теперь мы вас не будем беспокоить нашими оповещениями");
+                      } else if (txt.equals("/add")) {
+                          updateDataRecordAllNull(chat);
+                          updateStatus(chat, Status.FAMILIYA);
+                          sendMsg(id, "Введите фамилию добавляемого человека");
+                      } else if (txt.equals("/help")) {
+                          sendMsg(id, "Список команд:\n" +
+                                  "/help - список команд\n" +
+                                  "#Имя - список людей с указанным именем\n" +
+                                  "!X - список людей празднующих день рождения, через X дней\n" +
+                                  "/add - добавить человека которого нет в списке\n" +
+                                  "/cancel - отменить добавление человека\n" +
+                                  "/delete - оменить уведомления об определенном человеке(например которого вы не знаете)\n" +
+                                  "+ - включить функцию автоматического уведомления\n" +
+                                  "- - отключить функцию автоматического уведомления\n" +
+                                  "?вопрос - так можно задать интересующий вопрос\n" +
+                                  "любое другое сообщение - получить список людей празднущих сегодня день рождения");
+                      } else if (txt.indexOf("%") == 0) {
+                          txt = txt.substring(1);
+                          sendAll(txt);
+                      } else if (txt.indexOf("?") == 0) {
+                          txt = txt.substring(1);
+                          sendAdmin(chat, txt);
+                      } else if (txt.indexOf("^") == 0) {
+                          txt = txt.substring(1);
+                          updateStatus(chat, Status.SEND_TO);
+                          updateDataRecord(chat, "DESCRIPTION", txt);
+                      } else if (txt.indexOf("$") == 0) {
+                          txt = txt.substring(1);
+                          int x = Integer.parseInt(txt);
+                          sendPhotoForPeopleID(chat, x);
+                      } else if (txt.equals("/delete")) {
+                          updateStatus(chat, Status.DELETE);
+                          sendMsg(id, "Введите № человека, о дне рождения, которого вы больше не хотите получать уведомления");
+                      } else if (txt.equals("/addPhoto")) {
+                          updateStatus(chat, Status.ADD_PHOTO_1);
+                          sendMsg(id, "Введите № человека, фото, которого вы хотите добавить");
+                      } else
+                          getBirthday(msg);
+                      break;
+                  case Status.FAMILIYA:
+                      updateDataRecord(chat, "FAMILIYA", txt);
+                      updateStatus(chat, Status.IMYA);
+                      sendMsg(id, "Введите имя добавляемого человека");
+                      break;
+                  case Status.IMYA:
+                      updateDataRecord(chat, "IMYA", txt);
+                      updateStatus(chat, Status.OTCHESTVO);
+                      sendMsg(id, "Введите отчество добавляемого человека (если вы не знаете отчество человека то отправьте ?)");
+                      break;
+                  case Status.OTCHESTVO:
+                      if (!txt.contains("?"))
+                          updateDataRecord(chat, "OTCHESTVO", txt);
+                      updateStatus(chat, Status.TELEFON);
+                      sendMsg(id, "Введите телефон добавляемого человека (если вы не знаете телефон человека то отправьте ?)");
+                      break;
+                  case Status.TELEFON:
+                      if (!txt.contains("?"))
+                          updateDataRecord(chat, "TELEFON", txt);
+                      updateStatus(chat, Status.BIRTHDAY);
+                      sendMsg(id, "Введите дату рождения добавляемого человека в формате ДД.ММ.ГГГГ (например 01.01.1990)");
+                      break;
+                  case Status.BIRTHDAY:
+                      updateDataRecord(chat, "BIRTHDAY", txt);
+                      updateStatus(chat, Status.DESCRIPTION);
+                      sendMsg(id, "Введите краткое описание добавляемого человека (например: Старший сын Ивана и Алены живет в г.Москва) или," +
+                              " если вы ничего не знаете о человеке, отправьте ?");
+                      break;
+                  case Status.DESCRIPTION:
+                      if (txt.trim().indexOf("?") != 0)
+                          updateDataRecord(chat, "DESCRIPTION", txt);
+                      updateStatus(chat, Status.PUBLIC_MAN);
+                      sendMsg(id, "Если Вы не хотите чтоб другие пользователи получали информацию о добавленном человеке отправьте 0," +
+                              " если же Вы не считаете это тайной отправьте 1");
+                      break;
+                  case Status.PUBLIC_MAN:
+                      boolean pm = (txt.trim().indexOf("0") != 0);
+                      insertBirthday(chat, pm);
+                      updateStatus(chat, Status.NORMAL);
+                      sendMsg(id, "Человек добавлен");
+                      break;
+                  case Status.SEND_TO:
+                      String[] res = getDataForInsertBirthday(chat);
+                      Long id_to = Long.parseLong(res[6].trim().replace("'", ""));
+                      updateStatus(chat, Status.NORMAL);
+                      sendMsg(id_to, txt);
+                      break;
+                  case Status.TIME_TO_SEND:
+                      addNew(msg);
+                      sendMsg(msg, "Теперь в " + txt + " вам будут приходить сообщения с именниниками");
+                      updateStatus(chat, Status.NORMAL);
+                      break;
+                  case Status.DELETE:
+                      try {
+                          int x = Integer.parseInt(txt.trim());
+                          deletePeople(chat, x);
+                          updateStatus(chat, Status.NORMAL);
+                      } catch (Exception e) {
+                          Log.error(e.getMessage());
+                          sendMsg(msg, "В сообщении должны содержаться только цифры, если вы передумали отправьте /cancel");
+                      }
+                      break;
+                  case Status.ADD_PHOTO_1:
+                      updateDataRecord(chat, "DESCRIPTION", txt);
+                      updateStatus(chat, Status.ADD_PHOTO_2);
+                      sendMsg(id, "Отправьте фото этого человека");
+                      break;
 
 
-        }
+              }
+      }
+      else if(status == Status.ADD_PHOTO_2){
+          List<PhotoSize> list = msg.getPhoto();
+          if(list!=null&&list.size()>0)
+          {
+              String[] res = getDataForInsertBirthday(chat);
+              int x = Integer.parseInt(res[6]);
+              addPhotoForPeopleId(x,list.get(0));
+              sendMsg(msg,"Фото добавлено");
+          }
+
+      }
 
     } catch (Exception e) {
       Log.error(e.getMessage());
@@ -210,6 +231,45 @@ public class Example extends TelegramLongPollingBot {
     } finally {
       releaseResources(st);
     }
+  }
+    public static PreparedStatement getPreparedStatement(String sql) {
+        try {
+            return getConnection().prepareStatement(sql);
+        } catch (Exception e) {
+            Log.error(e.getMessage());
+            return null;
+        }
+    }
+
+
+    public static void executeUpdate(String query,List<Object> params) {
+        Log.add("Executing:"+query);
+        PreparedStatement st = null;
+        try {
+            st = getPreparedStatement(query);
+            for(int i =0;i<params.size();i++)
+            {
+                st.setObject(i,params.get(i));
+            }
+            st.executeUpdate();
+        } catch (Exception e) {
+            Log.error(e.getMessage());
+        } finally {
+            releaseResources(st);
+        }
+    }
+
+  void addPhotoForPeopleId(int id,PhotoSize p)
+  {
+      String query = "UPDATE PEOPLE SET PHOTO = ? WHERE ID = "+id;
+      try {
+          FileInputStream stream = new FileInputStream(p.getFilePath());
+          List<Object> list = new ArrayList<>();
+          list.add(stream);
+          executeUpdate(query,list);
+      } catch (FileNotFoundException e) {
+          e.printStackTrace();
+      }
   }
 
   void sendPhotoForPeopleID(Chat chat,int id)
