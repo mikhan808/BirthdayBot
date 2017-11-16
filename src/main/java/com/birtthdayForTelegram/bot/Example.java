@@ -1,15 +1,14 @@
 package com.birtthdayForTelegram.bot;
 
+import org.telegram.telegrambots.api.methods.GetFile;
 import org.telegram.telegrambots.api.methods.send.SendMessage;
 import org.telegram.telegrambots.api.methods.send.SendPhoto;
-import org.telegram.telegrambots.api.objects.Chat;
-import org.telegram.telegrambots.api.objects.Message;
-import org.telegram.telegrambots.api.objects.PhotoSize;
-import org.telegram.telegrambots.api.objects.Update;
+import org.telegram.telegrambots.api.objects.*;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.exceptions.TelegramApiException;
 
 import java.io.*;
+import java.io.File;
 import java.sql.*;
 import java.util.*;
 import java.util.Date;
@@ -267,11 +266,16 @@ public class Example extends TelegramLongPollingBot {
   {
       String query = "UPDATE PEOPLE SET PHOTO = ? WHERE ID = "+id;
       try {
-          FileInputStream stream = new FileInputStream(p.getFilePath());
+          GetFile getFile = new GetFile();
+          getFile.setFileId(p.getFileId());
+          org.telegram.telegrambots.api.objects.File tfile = getFile(getFile);
+          File file = downloadFile(tfile);
           List<Object> list = new ArrayList<>();
-          list.add(stream);
+          list.add(new FileInputStream(file));
           executeUpdate(query,list);
       } catch (FileNotFoundException e) {
+          e.printStackTrace();
+      } catch (TelegramApiException e) {
           e.printStackTrace();
       }
   }
