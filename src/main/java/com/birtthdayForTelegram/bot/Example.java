@@ -92,7 +92,7 @@ public class Example extends TelegramLongPollingBot {
                             } else if (txt.equals("/delete")) {
                                 updateStatus(chat, Status.DELETE);
                                 sendMsg(id, "Введите № человека, о дне рождения, которого вы больше не хотите получать уведомления");
-                            } else if (txt.equals("/addPhoto")) {
+                            } else if (txt.equals("/addphoto")) {
                                 updateStatus(chat, Status.ADD_PHOTO_1);
                                 sendMsg(id, "Введите № человека, фото, которого вы хотите добавить");
                             } else
