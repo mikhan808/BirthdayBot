@@ -364,8 +364,8 @@ public class Example extends TelegramLongPollingBot {
   }
 
   String[] getDataForInsertBirthday(Chat chat) {
-    String[] res = new String[7];
-    for (int i = 0; i < 7; i++)
+    String[] res = new String[8];
+    for (int i = 0; i < 8; i++)
       res[i] = "NULL";
     try {
       String query = "SELECT * FROM DIALOGS_DATA WHERE CHAT = " + chat.getId();
