@@ -696,7 +696,7 @@ public class Example extends TelegramLongPollingBot {
                 sendMsg(chat, text);
                 if (photo != null) {
                     InputStream is = photo.getBinaryStream();
-                    sendPhoto(chat, is, "");
+                    sendPhoto(chat, is, ":-)");
                 }
             }
             if (first) {
