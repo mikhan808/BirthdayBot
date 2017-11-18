@@ -15,7 +15,7 @@ public class ThreadSending implements Runnable {
 
     @Override
     public void run() {
-        bot.getBirthday(id);
+        bot.getBirthdaysForSchedule(id);
         try {
             String query = "update chats set time_last_sending=current_timestamp where id = " + id;
             Example.executeUpdate(query);
