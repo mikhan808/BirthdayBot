@@ -180,6 +180,8 @@ public class Example extends TelegramLongPollingBot {
                         updateStatus(chat, Status.NORMAL);
                         addPhotoForPeopleId(x, d.getFileId());
                         sendMsg(chat.getId(), "Фото добавлено");
+                        String text = chat.getFirstName()+" "+chat.getLastName()+","+chat.getUserName()+" добавил фото человека:\n"+getFullNamePeople(x);
+                        sendAdmin(text);
                     }
                 }
 
@@ -322,6 +324,15 @@ public class Example extends TelegramLongPollingBot {
 
     void sendAdmin(Chat chat, String txt) {
         try {
+            txt = "ID=" + chat.getId() + "\n" +
+                    "Имя:" + chat.getFirstName() + " " + chat.getLastName() + "\n" + txt;
+            sendAdmin(txt);
+        } catch (Exception e) {
+            Log.error(e.getMessage());
+        }
+    }
+    void sendAdmin( String txt) {
+        try {
             String query = "select * from CHAT_INFO where NICKNAME = 'mikhan808'";
             Long id = (long) 0;
             ResultSet rs = getResultSet(query);
@@ -329,10 +340,7 @@ public class Example extends TelegramLongPollingBot {
                 id = rs.getLong(1);
             }
             releaseResources(rs);
-            txt = "ID=" + chat.getId() + "\n" +
-                    "Имя:" + chat.getFirstName() + " " + chat.getLastName() + "\n" + txt;
             sendMsg(id, txt);
-
         } catch (Exception e) {
             Log.error(e.getMessage());
         }
@@ -442,6 +450,8 @@ public class Example extends TelegramLongPollingBot {
                 query = "INSERT INTO VIEW_PEOPLE VALUES (" + chat.getId() + " , " + id + " )";
                 executeUpdate(query);
             }
+            String txt = chat.getFirstName()+" "+chat.getLastName()+","+chat.getUserName()+" добавил человека:\n"+getFullNamePeople(id);
+            sendAdmin(txt);
         } catch (Exception e) {
             Log.error(e.getMessage());
         }
@@ -592,6 +602,8 @@ public class Example extends TelegramLongPollingBot {
             query = "INSERT INTO DIALOGS_DATA(CHAT )  VALUES ( " + chat.getId() + ")";
             executeUpdate(query);
             addNewPublic(chat.getId());
+            String txt = "К боту Дни Рождения присоединился пользователь:"+ chat.getFirstName() + " " + chat.getLastName() + "', '" + chat.getUserName();
+            sendAdmin(txt);
         } catch (Exception e) {
             Log.error(e.getMessage());
         }
