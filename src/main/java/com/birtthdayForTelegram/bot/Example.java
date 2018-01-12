@@ -602,6 +602,14 @@ public class Example extends TelegramLongPollingBot {
             query = "INSERT INTO DIALOGS_DATA(CHAT )  VALUES ( " + chat.getId() + ")";
             executeUpdate(query);
             addNewPublic(chat.getId());
+            query = "INSERT INTO GROUPS (ID , NAME , PASSWORD , PRIVATE,OWNER_ID)  VALUES (null , '"+chat.getFirstName() + " " + chat.getLastName()+"','*****' , 1,"+chat.getId()+")";
+            executeUpdate(query);
+            query = "SELECT ID FROM GROUPS WHERE OWNER_ID ="+chat.getId()+" and name = '"+chat.getFirstName() + " " + chat.getLastName()+"' and private = 1";
+            ResultSet rs1 = getResultSet(query);
+            if(rs1.next()) {
+                executeUpdate("INSERT INTO GROUP_CHATS (ID_GROUP, ID_CHAT)  VALUES (" + rs1.getLong(1) + ", " + chat.getId() + " )");
+            }
+            releaseResources(rs1);
             String txt = "К боту Дни Рождения присоединился пользователь:"+ chat.getFirstName() + " " + chat.getLastName() + "', '" + chat.getUserName();
             sendAdmin(txt);
         } catch (Exception e) {
