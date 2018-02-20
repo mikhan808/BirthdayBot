@@ -7,11 +7,15 @@ import org.telegram.telegrambots.api.objects.*;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.exceptions.TelegramApiException;
 
-import java.io.*;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.InputStream;
 import java.sql.*;
-import java.util.*;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
+import java.util.Properties;
 
 /**
  * Created by МишаИОля on 15.10.2017.
@@ -202,7 +206,7 @@ public class Example extends TelegramLongPollingBot {
             connInfo.put("user", "SYSDBA");
             connInfo.put("password", "masterkey");
             connInfo.put("charSet", "Cp1251");
-            return DriverManager.getConnection("jdbc:firebirdsql://localhost:3050//home/mikhan808/databases/BIRTH (2).FDB", connInfo);
+            return DriverManager.getConnection("jdbc:firebirdsql://localhost:3050/birth", connInfo);
         } catch (Exception e) {
             Log.error(e.getMessage());
             return null;
