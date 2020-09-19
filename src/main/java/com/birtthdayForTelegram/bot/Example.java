@@ -12,15 +12,28 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.sql.*;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 
 /**
  * Created by МишаИОля on 15.10.2017.
  */
+
 public class Example extends TelegramLongPollingBot {
+    public final static String PASSWORD = "*********";
+
+    public static Connection getConnection() {
+        try {
+            Properties connInfo = new Properties();
+            connInfo.put("user", "SYSDBA");
+            connInfo.put("password", "masterkey");
+            connInfo.put("charSet", "Cp1251");
+            return DriverManager.getConnection("jdbc:firebirdsql://localhost:3055/birth", connInfo);
+        } catch (Exception e) {
+            Log.error(e.getMessage());
+            return null;
+        }
+    }
 
     @Override
     public void onUpdateReceived(Update update) {
@@ -31,12 +44,20 @@ public class Example extends TelegramLongPollingBot {
         try {
             String query = "SELECT * FROM DIALOGS WHERE CHAT = " + id;
             ResultSet rs = getResultSet(query);
-            if (rs.next()) {
-                status = rs.getInt(2);
-            } else {
-                addNewChatAndDialog(chat);
-                status = Status.NORMAL;
-            }
+            if (rs != null) {
+                if (rs.next()) {
+                    status = rs.getInt(2);
+                } else {
+                    if (Objects.equals(msg.getText(), PASSWORD)) {
+                        addNewChatAndDialog(chat);
+                        status = Status.NORMAL;
+                    } else {
+                        sendMsg(id, "Введите пароль");
+                        releaseResources(rs);
+                        return;
+                    }
+                }
+            } else return;
             releaseResources(rs);
             String txt = msg.getText();
             if (txt != null) {
@@ -198,19 +219,6 @@ public class Example extends TelegramLongPollingBot {
         }
 
 
-    }
-
-    public static Connection getConnection() {
-        try {
-            Properties connInfo = new Properties();
-            connInfo.put("user", "SYSDBA");
-            connInfo.put("password", "masterkey");
-            connInfo.put("charSet", "Cp1251");
-            return DriverManager.getConnection("jdbc:firebirdsql://localhost:3050/birth", connInfo);
-        } catch (Exception e) {
-            Log.error(e.getMessage());
-            return null;
-        }
     }
 
     public static Statement getStatement() {
@@ -426,15 +434,15 @@ public class Example extends TelegramLongPollingBot {
     void insertBirthday(Chat chat, boolean public_man) {
         try {
             String[] res = getDataForInsertBirthday(chat);
-            String query = "INSERT INTO PEOPLE VALUES (\n";
+            StringBuilder query = new StringBuilder("INSERT INTO PEOPLE VALUES (\n");
             for (int i = 0; i < res.length; i++) {
-                query += " " + res[i];
+                query.append(" ").append(res[i]);
                 if (i < res.length - 1)
-                    query += ",";
+                    query.append(",");
             }
-            query += ")";
+            query.append(")");
             try {
-                executeUpdate(query);
+                executeUpdate(query.toString());
             } catch (Exception e) {
                 Log.error(e.getMessage());
             }
@@ -444,15 +452,15 @@ public class Example extends TelegramLongPollingBot {
             else id = getPeopleID(res[1].replace("'", ""), res[2].replace("'", ""), res[5].replace("'", ""));
             if (public_man) {
                 List<Long> chats = allChats();
-                query = "INSERT INTO PUBLIC_PEOPLE VALUES (" + id + " )";
-                executeUpdate(query);
+                query = new StringBuilder("INSERT INTO PUBLIC_PEOPLE VALUES (" + id + " )");
+                executeUpdate(query.toString());
                 for (Long c : chats) {
-                    query = "INSERT INTO VIEW_PEOPLE VALUES (" + c + " , " + id + " )";
-                    executeUpdate(query);
+                    query = new StringBuilder("INSERT INTO VIEW_PEOPLE VALUES (" + c + " , " + id + " )");
+                    executeUpdate(query.toString());
                 }
             } else {
-                query = "INSERT INTO VIEW_PEOPLE VALUES (" + chat.getId() + " , " + id + " )";
-                executeUpdate(query);
+                query = new StringBuilder("INSERT INTO VIEW_PEOPLE VALUES (" + chat.getId() + " , " + id + " )");
+                executeUpdate(query.toString());
             }
             String txt = chat.getFirstName()+" "+chat.getLastName()+","+chat.getUserName()+" добавил человека:\n"+getFullNamePeople(id);
             sendAdmin(txt);

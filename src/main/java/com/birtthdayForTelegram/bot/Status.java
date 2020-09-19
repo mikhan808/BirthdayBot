@@ -14,4 +14,5 @@ public class Status {
   public static final int DELETE = 10;
   public static final int ADD_PHOTO_1 = 11;
   public static final int ADD_PHOTO_2 = 12;
+  public static final int UNKNOWN = 13;
 }
