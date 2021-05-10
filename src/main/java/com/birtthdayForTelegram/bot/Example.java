@@ -20,7 +20,7 @@ import java.util.*;
  */
 
 public class Example extends TelegramLongPollingBot {
-    public final static String PASSWORD = "*********";
+    public final static String PASSWORD = "****";
 
     public static Connection getConnection() {
         try {
@@ -68,9 +68,17 @@ public class Example extends TelegramLongPollingBot {
                         case Status.NORMAL:
                             if (txt.equals("Привет"))
                                 sendMsg(id, "Привет");
-                            if (txt.indexOf("#") == 0)
+                            if (txt.indexOf("*") == 0)
                                 getBirthdayOfName(id, txt.substring(1));
-                            else if (txt.indexOf("!") == 0) {
+                            else if (txt.indexOf("/id") == 0) {
+                                try {
+                                    int x = Integer.parseInt(txt.substring("/id".length()));
+                                    sendMsg(id, getFullNamePeople(x));
+                                } catch (Exception e) {
+                                    sendMsg(id, "после /id должны идти только цифры");
+                                }
+
+                            } else if (txt.indexOf("!") == 0) {
                                 try {
                                     int x = Integer.parseInt(txt.substring(1));
                                     getBirthdaysInFewDays(id, x);
@@ -90,12 +98,12 @@ public class Example extends TelegramLongPollingBot {
                             } else if (txt.equals("/help")) {
                                 sendMsg(id, "Список команд:\n" +
                                         "/help - список команд\n" +
-                                        "#Имя - список людей с указанным именем\n" +
-                                        "!X - список людей празднующих день рождения, через X дней\n" +
                                         "/add - добавить человека которого нет в списке\n" +
                                         "/cancel - отменить добавление человека\n" +
-                                        "/delete - оменить уведомления об определенном человеке(например которого вы не знаете)\n" +
                                         "/addphoto - Добавить фотографию человеку\n" +
+                                        "/edit - Исправить неверные сведения\n" +
+                                        "*Имя - список людей с указанным именем\n" +
+                                        "!X - список людей празднующих день рождения, через X дней\n" +
                                         "+ - включить функцию автоматического уведомления\n" +
                                         "- - отключить функцию автоматического уведомления\n" +
                                         "?вопрос - так можно задать интересующий вопрос\n" +
@@ -114,12 +122,16 @@ public class Example extends TelegramLongPollingBot {
                                 txt = txt.substring(1);
                                 int x = Integer.parseInt(txt);
                                 sendPhotoForPeopleID(chat, x);
-                            } else if (txt.equals("/delete")) {
-                                updateStatus(chat, Status.DELETE);
-                                sendMsg(id, "Введите № человека, о дне рождения, которого вы больше не хотите получать уведомления");
                             } else if (txt.equals("/addphoto")) {
                                 updateStatus(chat, Status.ADD_PHOTO_1);
                                 sendMsg(id, "Введите № человека, фото, которого вы хотите добавить");
+                            } else if (txt.equals("/edit")) {
+                                updateDataRecordAllNull(chat);
+                                updateStatus(chat, Status.EDIT);
+                                sendMsg(id, "Введите № человека, информацию о котором вы хотите исправить");
+                            } else if (txt.equals("/condition")) {
+                                updateStatus(chat, Status.CONDITION);
+                                sendMsg(id, "Введите условие по которому будет выполнен SQL запрос");
                             } else
                                 getTodayBirthdays(id);
                             break;
@@ -154,13 +166,7 @@ public class Example extends TelegramLongPollingBot {
                         case Status.DESCRIPTION:
                             if (txt.trim().indexOf("?") != 0)
                                 updateDataRecord(chat, "DESCRIPTION", txt);
-                            updateStatus(chat, Status.PUBLIC_MAN);
-                            sendMsg(id, "Если Вы не хотите чтоб другие пользователи получали информацию о добавленном человеке отправьте 0," +
-                                    " если же Вы не считаете это тайной отправьте 1");
-                            break;
-                        case Status.PUBLIC_MAN:
-                            boolean pm = (txt.trim().indexOf("0") != 0);
-                            insertBirthday(chat, pm);
+                            insertBirthday(chat);
                             updateStatus(chat, Status.NORMAL);
                             sendMsg(id, "Человек добавлен");
                             break;
@@ -175,22 +181,94 @@ public class Example extends TelegramLongPollingBot {
                             sendMsg(chat.getId(), "Теперь в " + txt + " вам будут приходить сообщения с именниниками");
                             updateStatus(chat, Status.NORMAL);
                             break;
-                        case Status.DELETE:
-                            try {
-                                int x = Integer.parseInt(txt.trim());
-                                deletePeople(chat, x);
-                                updateStatus(chat, Status.NORMAL);
-                            } catch (Exception e) {
-                                Log.error(e.getMessage());
-                                sendMsg(chat.getId(), "В сообщении должны содержаться только цифры, если вы передумали отправьте /cancel");
-                            }
-                            break;
                         case Status.ADD_PHOTO_1:
                             updateDataRecord(chat, "DESCRIPTION", txt);
                             updateStatus(chat, Status.ADD_PHOTO_2);
                             sendMsg(id, "Отправьте фото этого человека");
                             break;
+                        case Status.EDIT:
+                            try {
+                                Integer.parseInt(txt);
+                                updateDataRecord(chat, "DESCRIPTION", txt);
+                                updateStatus(chat, Status.EDIT_2);
+                                StringBuilder sb = new StringBuilder();
+                                sb.append("Введите цифру поля,которое Вы хотите исправить\n");
+                                sb.append("1 - Фамилия\n");
+                                sb.append("2 - Имя\n");
+                                sb.append("3 - Отчество\n");
+                                sb.append("4 - Телефон\n");
+                                sb.append("5 - День рождения\n");
+                                sb.append("6 - Описание");
+                                sendMsg(id, sb.toString());
+                            } catch (NumberFormatException e) {
+                                sendMsg(id, "Номер может быть только числом. Пожалуйста повторите ввод");
+                            }
+                            break;
+                        case Status.EDIT_2:
+                            try {
+                                int pole = Integer.parseInt(txt) + Status.EDIT;
+                                updateStatus(chat, pole);
+                                String s_pole = "";
+                                switch (pole) {
+                                    case Status.EDIT_FAMILIYA:
+                                        s_pole = "фамилию";
+                                        break;
+                                    case Status.EDIT_IMYA:
+                                        s_pole = "имя";
+                                        break;
+                                    case Status.EDIT_OTCHESTVO:
+                                        s_pole = "отчество";
+                                        break;
+                                    case Status.EDIT_TELEFON:
+                                        s_pole = "телефон";
+                                        break;
+                                    case Status.EDIT_BIRTHDAY:
+                                        s_pole = "дату рождения в формате ДД.ММ.ГГГГ (например 01.01.1990)";
+                                        break;
+                                    case Status.EDIT_DESCRIPTION:
+                                        s_pole = "описание";
+                                        break;
 
+                                }
+                                sendMsg(id, "Введите " + s_pole);
+                            } catch (NumberFormatException e) {
+                                sendMsg(id, "Номер может быть только числом. Пожалуйста повторите ввод");
+                            }
+                            break;
+                        case Status.EDIT_FAMILIYA:
+                            updateDataRecordPeopleInfo(chat, "FAMILIYA", txt);
+                            updateStatus(chat, Status.NORMAL);
+                            sendMsg(id, "Исправлено");
+                            break;
+                        case Status.EDIT_IMYA:
+                            updateDataRecordPeopleInfo(chat, "IMYA", txt);
+                            updateStatus(chat, Status.NORMAL);
+                            sendMsg(id, "Исправлено");
+                            break;
+                        case Status.EDIT_OTCHESTVO:
+                            updateDataRecordPeopleInfo(chat, "OTCHESTVO", txt);
+                            updateStatus(chat, Status.NORMAL);
+                            sendMsg(id, "Исправлено");
+                            break;
+                        case Status.EDIT_TELEFON:
+                            updateDataRecordPeopleInfo(chat, "TELEFON", txt);
+                            updateStatus(chat, Status.NORMAL);
+                            sendMsg(id, "Исправлено");
+                            break;
+                        case Status.EDIT_BIRTHDAY:
+                            updateDataRecordPeopleInfo(chat, "BIRTHDAY", txt);
+                            updateStatus(chat, Status.NORMAL);
+                            sendMsg(id, "Исправлено");
+                            break;
+                        case Status.EDIT_DESCRIPTION:
+                            updateDataRecordPeopleInfo(chat, "DESCRIPTION", txt);
+                            updateStatus(chat, Status.NORMAL);
+                            sendMsg(id, "Исправлено");
+                            break;
+                        case Status.CONDITION:
+                            getBirthdayOfCondition(id, txt);
+                            updateStatus(chat, Status.NORMAL);
+                            break;
 
                     }
             } else if (status == Status.ADD_PHOTO_2) {
@@ -411,7 +489,7 @@ public class Example extends TelegramLongPollingBot {
     }
 
     int getPeopleID(String f, String i, String o, String d) {
-        if (o == null || o.trim().toUpperCase().equals("NULL") || o.trim().equals(""))
+        if (o == null || o.trim().equalsIgnoreCase("NULL") || o.trim().equals(""))
             return getPeopleID(f + " " + i, d);
         else return getPeopleID(f + " " + i + " " + o, d);
     }
@@ -431,7 +509,7 @@ public class Example extends TelegramLongPollingBot {
         return res;
     }
 
-    void insertBirthday(Chat chat, boolean public_man) {
+    void insertBirthday(Chat chat) {
         try {
             String[] res = getDataForInsertBirthday(chat);
             StringBuilder query = new StringBuilder("INSERT INTO PEOPLE VALUES (\n");
@@ -450,20 +528,21 @@ public class Example extends TelegramLongPollingBot {
             if (res[3] != null)
                 id = getPeopleID(res[1].replace("'", ""), res[2].replace("'", ""), res[3].replace("'", ""), res[5].replace("'", ""));
             else id = getPeopleID(res[1].replace("'", ""), res[2].replace("'", ""), res[5].replace("'", ""));
-            if (public_man) {
-                List<Long> chats = allChats();
-                query = new StringBuilder("INSERT INTO PUBLIC_PEOPLE VALUES (" + id + " )");
-                executeUpdate(query.toString());
-                for (Long c : chats) {
-                    query = new StringBuilder("INSERT INTO VIEW_PEOPLE VALUES (" + c + " , " + id + " )");
-                    executeUpdate(query.toString());
-                }
-            } else {
-                query = new StringBuilder("INSERT INTO VIEW_PEOPLE VALUES (" + chat.getId() + " , " + id + " )");
-                executeUpdate(query.toString());
-            }
-            String txt = chat.getFirstName()+" "+chat.getLastName()+","+chat.getUserName()+" добавил человека:\n"+getFullNamePeople(id);
+            String txt = chat.getFirstName() + " " + chat.getLastName() + "," + chat.getUserName() + " добавил человека:\n" + getFullNamePeople(id);
             sendAdmin(txt);
+        } catch (Exception e) {
+            Log.error(e.getMessage());
+        }
+    }
+
+    void updateDataRecordPeopleInfo(Chat chat, String field, String data) {
+        String[] ss = getDataForInsertBirthday(chat);
+        int x = Integer.parseInt(ss[6].replace("'", ""));
+        try {
+            String query = "UPDATE PEOPLE\n" +
+                    "SET " + field + " = '" + data + "'\n" +
+                    "where id =  " + x;
+            executeUpdate(query);
         } catch (Exception e) {
             Log.error(e.getMessage());
         }
@@ -511,7 +590,7 @@ public class Example extends TelegramLongPollingBot {
     String getFullNamePeople(int id) {
         String res = "Никакой Никак Никакович";
         try {
-            String query = "select FULL_NAME from PEOPLE where ID =  " + id;
+            String query = "select UPPER (FULL_NAME) from PEOPLE where ID =  " + id;
             ResultSet rs = getResultSet(query);
             if (rs.next())
                 res = rs.getString(1);
@@ -622,16 +701,47 @@ public class Example extends TelegramLongPollingBot {
                 executeUpdate("INSERT INTO GROUP_CHATS (ID_GROUP, ID_CHAT)  VALUES (" + rs1.getLong(1) + ", " + chat.getId() + " )");
             }
             releaseResources(rs1);
-            String txt = "К боту Дни Рождения присоединился пользователь:"+ chat.getFirstName() + " " + chat.getLastName() + "', '" + chat.getUserName();
+            String txt = "К боту Дни Рождения присоединился пользователь:" + chat.getFirstName() + " " + chat.getLastName() + "', '" + chat.getUserName();
             sendAdmin(txt);
         } catch (Exception e) {
             Log.error(e.getMessage());
         }
     }
 
+    String buildQueryBirthdaysOfCondition(String condition) {
+        return buildQueryBirthdays(condition, null, 0);
+    }
+
+    String buildQueryBirthdays() {
+        return buildQueryBirthdays(null, null, 0);
+    }
+
+    String buildQueryBirthdays(int days) {
+        return buildQueryBirthdays(null, null, days);
+    }
+
+    String buildQueryBirthdays(String name) {
+        return buildQueryBirthdays(null, name, 0);
+    }
+
+    String buildQueryBirthdays(String condition, String name, int days) {
+        if (condition == null) {
+            condition = "extract( month from BIRTHDAY) = EXTRACT ( month from " + buildDate(days) + " )\n" +
+                    "and extract( day from BIRTHDAY) = EXTRACT ( day from " + buildDate(days) + " ) ";
+            if (name != null)
+                condition = "IMYA='" + name + "'";
+        }
+        return "select * from PEOPLE where " + condition;
+    }
+
+    String buildDate(int days) {
+        if (days == 0)
+            return "current_date";
+        return "current_date+" + days;
+    }
+
     void getTodayBirthdays(Long chat) {
-        String query = "select * from VIEW_PEOPLE AS V LEFT JOIN PEOPLE P ON P.ID = V.PEOPLE_ID  where V.CHAT_ID = " + chat + " and extract( month from P.BIRTHDAY) = EXTRACT ( month from current_date)\n" +
-                "and extract( day from P.BIRTHDAY) = EXTRACT ( day from current_date) ";
+        String query = buildQueryBirthdays();
         String firstText = "Сегодня празднуют день рождения:";
         String vosrastText = "";
         String emptyMsg = "В нашем списке отсутствуют люди отмечающие сегодня день рождения.";
@@ -639,8 +749,7 @@ public class Example extends TelegramLongPollingBot {
     }
 
     void getBirthdaysForSchedule(Long chat) {
-        String query = "select * from VIEW_PEOPLE AS V LEFT JOIN PEOPLE P ON P.ID = V.PEOPLE_ID  where V.CHAT_ID = " + chat + " and extract( month from P.BIRTHDAY) = EXTRACT ( month from current_date)\n" +
-                "and extract( day from P.BIRTHDAY) = EXTRACT ( day from current_date) ";
+        String query = buildQueryBirthdays();
         String firstText = "Сегодня празднуют день рождения:";
         String vosrastText = "";
         String emptyMsg = null;
@@ -648,8 +757,7 @@ public class Example extends TelegramLongPollingBot {
     }
 
     void getBirthdaysInFewDays(Long chat, int x) {
-        String query = "select * from VIEW_PEOPLE AS V LEFT JOIN PEOPLE P ON P.ID = V.PEOPLE_ID  where V.CHAT_ID = " + chat + " and extract( month from P.BIRTHDAY) = EXTRACT ( month from current_date+" + x + ")\n" +
-                "and extract( day from P.BIRTHDAY) = EXTRACT ( day from current_date+" + x + ") ";
+        String query = buildQueryBirthdays(x);
         String firstText = "через " + x + " " + getDayFormated(x) + " празднуют день рождения:";
         String vosrastText = "На данный момент возраст:";
         String emptyMsg = "В нашем списке отсутствуют люди отмечающие день рождения через " + x + " " + getDayFormated(x) + ".";
@@ -699,15 +807,15 @@ public class Example extends TelegramLongPollingBot {
                     sendMsg(chat, firstMsg);
                     first = false;
                 }
-                String id = rs.getString(3);
-                String f = rs.getString(4);
-                String i = rs.getString(5);
-                String o = rs.getString(6);
-                String t = rs.getString(7);
-                String d = rs.getString(9);
-                Date date = rs.getDate(8);
-                int v = rs.getInt(10);
-                Blob photo = rs.getBlob(12);
+                String id = rs.getString(1);
+                String f = rs.getString(2);
+                String i = rs.getString(3);
+                String o = rs.getString(4);
+                String t = rs.getString(5);
+                String d = rs.getString(7);
+                Date date = rs.getDate(6);
+                int v = rs.getInt(8);
+                Blob photo = rs.getBlob(10);
                 String text = f + " " + i;
                 if (o != null)
                     text += " " + o;
@@ -742,9 +850,16 @@ public class Example extends TelegramLongPollingBot {
         }
     }
 
+    void getBirthdayOfCondition(Long chat, String condition) {
+        String query = buildQueryBirthdaysOfCondition(condition);
+        String firstText = "Люди с заданным условием \"" + condition + "\" :";
+        String vosrastText = "На данный момент возраст:";
+        String emptyMsg = "В нашем списке отсутствуют люди с заданным условием \"" + condition + "\"";
+        sendInfoAboutPeople(chat, query, firstText, vosrastText, emptyMsg, true, true);
+    }
 
     void getBirthdayOfName(Long chat, String name) {
-        String query = "select * from VIEW_PEOPLE AS V LEFT JOIN PEOPLE P ON P.ID = V.PEOPLE_ID  where V.CHAT_ID = " + chat + " and UPPER(P.IMYA)='" + name.trim().toUpperCase() + "'";
+        String query = buildQueryBirthdays(name);
         String firstText = "Люди с именем " + name + " :";
         String vosrastText = "На данный момент возраст:";
         String emptyMsg = "В нашем списке отсутствуют люди с именем " + name;
