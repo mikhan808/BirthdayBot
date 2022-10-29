@@ -1,13 +1,6 @@
 package com.birtthdayForTelegram.bot;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
-import java.sql.Statement;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
 
 public class SendToTime implements Runnable {
     Example bot;
@@ -24,7 +17,10 @@ public class SendToTime implements Runnable {
                 ResultSet rs = Example.getResultSet(query);
                 while (rs.next()) {
                     Long id = rs.getLong(1);
-                    Runnable r = new ThreadSending(id, bot);
+                    int sendMolitva = rs.getInt("SEND_MOLITVA");
+                    int sendBible = rs.getInt("SEND_BIBLE");
+                    int sendPlan = rs.getInt("SEND_PLAN");
+                    Runnable r = new ThreadSending(id, bot, sendMolitva, sendBible, sendPlan);
                     Thread t = new Thread(r);
                     t.start();
                 }

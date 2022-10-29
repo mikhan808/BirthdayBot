@@ -132,6 +132,10 @@ public class Example extends TelegramLongPollingBot {
                             } else if (txt.equals("/condition")) {
                                 updateStatus(chat, Status.CONDITION);
                                 sendMsg(id, "Введите условие по которому будет выполнен SQL запрос");
+                            } else if (txt.equals("/molitva")) {
+                                getTodayMolitva(id);
+                            } else if (txt.equals("/plan")) {
+                                getTodayPlan(id, false);
                             } else
                                 getTodayBirthdays(id);
                             break;
@@ -643,14 +647,21 @@ public class Example extends TelegramLongPollingBot {
     }
 
     private void sendMsg(Long ChatId, String text) {
-        SendMessage s = new SendMessage();
-        s.setChatId(ChatId); // Боту может писать не один человек, и поэтому чтобы отправить сообщение, грубо говоря нужно узнать куда его отправлять
-        s.setText(text);
-        try { //Чтобы не крашнулась программа при вылете Exception
-            sendMessage(s);
-        } catch (TelegramApiException e) {
-            Log.error(e.getMessage());
-            e.printStackTrace();
+        if (text.length() > 4096) {
+            String text1 = text.substring(0, 4095);
+            String text2 = text.substring(4095);
+            sendMsg(ChatId, text1);
+            sendMsg(ChatId, text2);
+        } else {
+            SendMessage s = new SendMessage();
+            s.setChatId(ChatId); // Боту может писать не один человек, и поэтому чтобы отправить сообщение, грубо говоря нужно узнать куда его отправлять
+            s.setText(text);
+            try { //Чтобы не крашнулась программа при вылете Exception
+                execute(s);
+            } catch (TelegramApiException e) {
+                Log.error(e.getMessage());
+                e.printStackTrace();
+            }
         }
     }
 
@@ -712,6 +723,41 @@ public class Example extends TelegramLongPollingBot {
         return buildQueryBirthdays(condition, null, 0);
     }
 
+    String buildQueryPlan(int days) {
+        String condition = "mesyac = EXTRACT ( month from " + buildDate(days) + " )\n" +
+                "and den = EXTRACT ( day from " + buildDate(days) + " ) ";
+        return "select mesto1, mesto2, mesto3 from plan_bible where " + condition;
+    }
+
+    String buildBibleTextQuery(String mesto) {
+        String sql = "select book, glava, stih, text from bible_view where book='";
+        String[] parts = mesto.split(":");
+        sql += parts[0] + "' and ";
+        parts = parts[1].split(",");
+        if (parts.length > 1) {
+            sql += "glava=" + parts[0];
+            parts = parts[1].split("-");
+            if (parts.length > 1) {
+                sql += " and stih>=" + parts[0] + " and stih<=" + parts[1];
+            }
+
+        } else {
+            parts = parts[0].split("-");
+            if (parts.length > 1) {
+                sql += " and glava>=" + parts[0] + " and glava<=" + parts[1];
+            } else sql += "glava=" + parts[0];
+        }
+        sql += "\norder by 1,2,3";
+        return sql;
+
+    }
+
+    String buildQueryMolitva(int days) {
+
+        String condition = "number_date = EXTRACT ( day from " + buildDate(days) + " ) ";
+        return "select semya from molitva where " + condition;
+    }
+
     String buildQueryBirthdays() {
         return buildQueryBirthdays(null, null, 0);
     }
@@ -738,6 +784,27 @@ public class Example extends TelegramLongPollingBot {
         if (days == 0)
             return "current_date";
         return "current_date+" + days;
+    }
+
+    void getTodayPlan(Long chat, boolean sendBible) {
+        String query = buildQueryPlan(0);
+        String firstText = "Сегодня читаем:";
+        String emptyMsg = "Ошибка";
+        sendInfoAboutPlan(chat, query, firstText, emptyMsg, sendBible);
+    }
+
+    void getTodayMolitva(Long chat) {
+        String query = buildQueryMolitva(0);
+        String firstText = "Сегодня молитва за следующие семьи:";
+        String emptyMsg = "Сегодня свободная тема молитвы";
+        sendInfoAboutMolitva(chat, query, firstText, emptyMsg);
+    }
+
+    void getMolitvaForSchedule(Long chat) {
+        String query = buildQueryMolitva(0);
+        String firstText = "Сегодня молитва за следующие семьи:";
+        String emptyMsg = null;
+        sendInfoAboutMolitva(chat, query, firstText, emptyMsg);
     }
 
     void getTodayBirthdays(Long chat) {
@@ -795,6 +862,75 @@ public class Example extends TelegramLongPollingBot {
                 return "года";
             default:
                 return "лет";
+        }
+    }
+
+    void sendInfoAboutMolitva(Long chat, String query, String firstMsg, String emptyMsg) {
+        try {
+            ResultSet rs = getResultSet(query);
+            boolean first = true;
+            while (rs.next()) {
+                if (first) {
+                    sendMsg(chat, firstMsg);
+                    first = false;
+                }
+                String text = rs.getString(1);
+                sendMsg(chat, text);
+            }
+            if (first) {
+                if (emptyMsg != null)
+                    sendMsg(chat, emptyMsg);
+            }
+            releaseResources(rs);
+        } catch (Exception e) {
+            Log.error(e.getMessage());
+            sendMsg(chat, e.getMessage());
+        }
+    }
+
+    void sendInfoAboutMesto(Long chat, String mesto, String emptyMsg) {
+        try {
+            ResultSet rs = getResultSet(buildBibleTextQuery(mesto));
+            boolean first = true;
+            String text = "";
+            while (rs.next()) {
+                if (first) {
+                    first = false;
+                }
+                String m1 = rs.getString(1);
+                String m2 = rs.getString(2);
+                String m3 = rs.getString(3);
+                String m4 = rs.getString(4);
+                text += m1 + " " + m2 + ":" + m3 + " " + m4 + "\n";
+            }
+            if (first) {
+                if (emptyMsg != null)
+                    sendMsg(chat, emptyMsg);
+            } else sendMsg(chat, text);
+            releaseResources(rs);
+        } catch (Exception e) {
+            Log.error(e.getMessage());
+            sendMsg(chat, e.getMessage());
+        }
+    }
+
+    void sendInfoAboutPlan(Long chat, String query, String firstMsg, String emptyMsg, boolean sendBible) {
+        try {
+            ResultSet rs = getResultSet(query);
+            while (rs.next()) {
+                sendMsg(chat, firstMsg);
+                for (int i = 1; i <= 3; i++) {
+                    sendMsg(chat, rs.getString(i));
+                }
+                if (sendBible)
+                    for (int i = 1; i <= 3; i++) {
+                        sendInfoAboutMesto(chat, rs.getString(i), emptyMsg);
+                    }
+            }
+            releaseResources(rs);
+        } catch (Exception e) {
+            Log.error(e.getMessage());
+            sendMsg(chat, e.getMessage());
         }
     }
 
