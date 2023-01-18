@@ -28,7 +28,7 @@ public class Example extends TelegramLongPollingBot {
             connInfo.put("user", "SYSDBA");
             connInfo.put("password", "masterkey");
             connInfo.put("charSet", "Cp1251");
-            return DriverManager.getConnection("jdbc:firebirdsql://localhost:3055/birth", connInfo);
+            return DriverManager.getConnection("jdbc:firebirdsql:127.0.0.1/3026:D:\\databases\\BIRTH.FDB", connInfo);
         } catch (Exception e) {
             Log.error(e.getMessage());
             return null;
@@ -626,12 +626,12 @@ public class Example extends TelegramLongPollingBot {
 
     @Override
     public String getBotUsername() {
-        return "Дни рождения";
+        return "Напоминалка";
     }
 
     @Override
     public String getBotToken() {
-        return "456313115:AAF-YfszfkM3HYSDdD1VfzSbMH9a7M1vHYg";
+        return "****";
     }
 
     private void sendPhoto(Long id, InputStream stream, String photoName) {
@@ -744,7 +744,7 @@ public class Example extends TelegramLongPollingBot {
         } else {
             parts = parts[0].split("-");
             if (parts.length > 1) {
-                sql += " and glava>=" + parts[0] + " and glava<=" + parts[1];
+                sql += "glava>=" + parts[0] + " and glava<=" + parts[1];
             } else sql += "glava=" + parts[0];
         }
         sql += "\norder by 1,2,3";
@@ -777,7 +777,7 @@ public class Example extends TelegramLongPollingBot {
             if (name != null)
                 condition = "IMYA='" + name + "'";
         }
-        return "select * from PEOPLE where " + condition;
+        return "select * from ZHIVYE where " + condition;
     }
 
     String buildDate(int days) {
