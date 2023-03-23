@@ -1,15 +1,14 @@
 package com.birtthdayForTelegram.bot;
 
-import org.telegram.telegrambots.api.methods.GetFile;
-import org.telegram.telegrambots.api.methods.send.SendMessage;
-import org.telegram.telegrambots.api.methods.send.SendPhoto;
-import org.telegram.telegrambots.api.objects.*;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
-import org.telegram.telegrambots.exceptions.TelegramApiException;
+import org.telegram.telegrambots.meta.api.methods.GetFile;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
+import org.telegram.telegrambots.meta.api.objects.*;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.sql.*;
 import java.util.Date;
@@ -361,19 +360,16 @@ public class Example extends TelegramLongPollingBot {
         }
     }
 
-    void addPhotoForPeopleId(int id, String file_id) {
+    void addPhotoForPeopleId(int id, String fileId) {
         String query = "UPDATE PEOPLE SET PHOTO = ? WHERE ID = " + id;
         try {
-            GetFile getFile = new GetFile();
-            getFile.setFileId(file_id);
-            org.telegram.telegrambots.api.objects.File tfile = getFile(getFile);
+            GetFile request = new GetFile(fileId);
+            org.telegram.telegrambots.meta.api.objects.File tfile = execute(request);
             File file = downloadFile(tfile);
             List<Object> list = new ArrayList<>();
             list.add(new FileInputStream(file));
             executeUpdate(query, list);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (TelegramApiException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -634,12 +630,24 @@ public class Example extends TelegramLongPollingBot {
         return "****";
     }
 
-    private void sendPhoto(Long id, InputStream stream, String photoName) {
+    public void sendPhoto(Long chatId, File file, String text) {
+        sendPhoto(chatId, new InputFile(file), text);
+    }
+
+    public void sendPhoto(Long chatId, InputStream is, String text) {
+        InputFile file = new InputFile();
+        file.setMedia(is, text);
+        sendPhoto(chatId, file, text);
+    }
+
+    public void sendPhoto(Long chatId, InputFile inputFile, String text) {
         SendPhoto s = new SendPhoto();
-        s.setChatId(id);
+        s.setChatId(chatId.toString());
+        s.setPhoto(inputFile);
+        if (text != null)
+            s.setCaption(text);
         try {
-            s.setNewPhoto(photoName, stream);
-            sendPhoto(s);
+            execute(s);
         } catch (TelegramApiException e) {
             Log.error(e.getMessage());
             e.printStackTrace();
@@ -656,7 +664,7 @@ public class Example extends TelegramLongPollingBot {
             SendMessage s = new SendMessage();
             s.setChatId(ChatId); // Боту может писать не один человек, и поэтому чтобы отправить сообщение, грубо говоря нужно узнать куда его отправлять
             s.setText(text);
-            try { //Чтобы не крашнулась программа при вылете Exception
+            try {
                 execute(s);
             } catch (TelegramApiException e) {
                 Log.error(e.getMessage());

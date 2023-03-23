@@ -2,28 +2,42 @@ package com.birtthdayForTelegram;
 
 import com.birtthdayForTelegram.bot.Example;
 import com.birtthdayForTelegram.bot.SendToTime;
-import org.telegram.telegrambots.ApiContextInitializer;
-import org.telegram.telegrambots.TelegramBotsApi;
-import org.telegram.telegrambots.api.objects.Update;
-import org.telegram.telegrambots.exceptions.TelegramApiException;
-import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.TelegramBotsApi;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 
 /**
  * Created by МишаИОля on 15.10.2017.
  */
 public class birtthdayForTelegram {
-    public static void main(String[] args)
-    {
-        ApiContextInitializer.init(); // Инициализируем апи
-        TelegramBotsApi botapi = new TelegramBotsApi();
+    public static void main(String[] args) {
         try {
-            Example bot = new Example();
-            Runnable r = new SendToTime(bot);
-            Thread t = new Thread(r);
-            t.start();
-            botapi.registerBot(bot);
-        } catch (TelegramApiException e) {
+            TelegramBotsApi telegramBotsApi = createTelegramBotsApi();
+            try {
+                Example bot = new Example();
+                Runnable r = new SendToTime(bot);
+                Thread t = new Thread(r);
+                t.start();
+                telegramBotsApi.registerBot(bot);
+            } catch (TelegramApiException e) {
+                e.printStackTrace();
+            }
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
+
+    private static TelegramBotsApi createTelegramBotsApi() {
+        return createLongPollingTelegramBotsApi();
+    }
+
+    private static TelegramBotsApi createLongPollingTelegramBotsApi() {
+        try {
+            return new TelegramBotsApi(DefaultBotSession.class);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
 }
