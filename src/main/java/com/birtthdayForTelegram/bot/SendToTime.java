@@ -20,7 +20,9 @@ public class SendToTime implements Runnable {
                     int sendMolitva = rs.getInt("SEND_MOLITVA");
                     int sendBible = rs.getInt("SEND_BIBLE");
                     int sendPlan = rs.getInt("SEND_PLAN");
-                    Runnable r = new ThreadSending(id, bot, sendMolitva, sendBible, sendPlan);
+                    int sendMolodezh = rs.getInt("SEND_MOLODEZH");
+                    int sendBirthday = rs.getInt("SEND_BIRTHDAY");
+                    Runnable r = new ThreadSending(id, bot, sendMolitva, sendBible, sendPlan,sendMolodezh,sendBirthday);
                     Thread t = new Thread(r);
                     t.start();
                 }

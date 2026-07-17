@@ -6,3 +6,6 @@ birtthdayForTelegram\.iml
 \.idea/
 
 log\.txt
+
+/config.properties
+/H:*birthdayBotLog.txt

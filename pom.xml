@@ -15,8 +15,8 @@
         </dependency>
         <dependency>
             <groupId>org.firebirdsql.jdbc</groupId>
-            <artifactId>jaybird-jdk18</artifactId>
-            <version>3.0.2</version>
+            <artifactId>jaybird</artifactId>
+            <version>5.0.12.java8</version>
         </dependency>
     </dependencies>
     <build>
@@ -38,7 +38,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>com.birtthdayForTelegram.birtthdayForTelegram</mainClass>
+                            <mainClass>com.birtthdayForTelegram.birthdayForTelegram</mainClass>
                             <packageName>com.birtthdayForTelegram</packageName>
                             <addClasspath>true</addClasspath>
                             <classpathPrefix>lib/</classpathPrefix>

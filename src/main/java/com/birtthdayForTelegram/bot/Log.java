@@ -10,7 +10,7 @@ public class Log {
   public static void add(String msg) {
     try {
       if (writer == null)
-        writer = new FileWriter("log.txt", true);
+        writer = new FileWriter("H:\\birthdayBotLog.txt", true);
       writer.write(LocalDateTime.now() + ":" + msg + "\n");
       writer.flush();
     } catch (IOException ex) {

@@ -1,0 +1,13 @@
+# Copy this file to config.properties and replace the placeholders.
+# The local config.properties file is excluded from Git.
+
+bot.token=telegram-bot-token
+bot.access.password=bot-access-password
+
+database.birth.url=jdbc:firebirdsql:192.168.0.50/3052:H:\\databases\\BIRTH_RDB52.FDB
+database.birth.user=SYSDBA
+database.birth.password=birth-database-password
+
+database.church.url=jdbc:firebirdsql:192.168.0.50/3050:H:\\databases\\CHURCH.FDB
+database.church.user=SYSDBA
+database.church.password=church-database-password
