@@ -25,13 +25,13 @@ public class ThreadSending implements Runnable {
 
     @Override
     public void run() {
-        if (sendPlan == 1)
+        if (sendPlan == 1 && bot.canSendTo(id))
             bot.getTodayPlan(id, sendBible == 1);
-        if (sendMolitva == 1)
+        if (sendMolitva == 1 && bot.canSendTo(id))
             bot.getMolitvaForSchedule(id);
-        if (sendMolodezh == 1)
+        if (sendMolodezh == 1 && bot.canSendTo(id))
             bot.getMolodezhMolitvaForSchedule(id);
-        if (sendBirthday == 1)
+        if (sendBirthday == 1 && bot.canSendTo(id))
             bot.getBirthdaysForSchedule(id);
         try {
             String query = "update chats set time_last_sending=current_timestamp where id = " + id;

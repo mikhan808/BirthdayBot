@@ -8,13 +8,19 @@ import org.telegram.telegrambots.meta.api.objects.*;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.sql.*;
 import java.util.Date;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by МишаИОля on 15.10.2017.
@@ -22,6 +28,7 @@ import java.util.*;
 
 public class Example extends TelegramLongPollingBot {
     public final static String PASSWORD = Config.get("bot.access.password");
+    private final Set<Long> unavailableChats = ConcurrentHashMap.newKeySet();
 
     public static Connection getConnection() {
         try {
@@ -51,7 +58,11 @@ public class Example extends TelegramLongPollingBot {
     @Override
     public void onUpdateReceived(Update update) {
         Message msg = update.getMessage();
+        if (msg == null) {
+            return;
+        }
         Long id = msg.getChatId();
+        unavailableChats.remove(id);
         Chat chat = msg.getChat();
         int status;
         try {
@@ -684,12 +695,31 @@ public class Example extends TelegramLongPollingBot {
     }
 
     public void sendPhoto(Long chatId, InputStream is, String text) {
-        InputFile file = new InputFile();
-        file.setMedia(is, text);
-        sendPhoto(chatId, file, text);
+        Path temporaryFile = null;
+        try (InputStream input = is) {
+            if (!canSendTo(chatId)) {
+                return;
+            }
+            temporaryFile = Files.createTempFile("birthdaybot-photo-", ".jpg");
+            Files.copy(input, temporaryFile, StandardCopyOption.REPLACE_EXISTING);
+            sendPhoto(chatId, temporaryFile.toFile(), text);
+        } catch (IOException e) {
+            Log.error("Не удалось подготовить фото для чата " + chatId + ": " + e.getMessage());
+        } finally {
+            if (temporaryFile != null) {
+                try {
+                    Files.deleteIfExists(temporaryFile);
+                } catch (IOException e) {
+                    Log.error("Не удалось удалить временный файл " + temporaryFile + ": " + e.getMessage());
+                }
+            }
+        }
     }
 
     public void sendPhoto(Long chatId, InputFile inputFile, String text) {
+        if (!canSendTo(chatId)) {
+            return;
+        }
         SendPhoto s = new SendPhoto();
         s.setChatId(chatId.toString());
         s.setPhoto(inputFile);
@@ -698,28 +728,61 @@ public class Example extends TelegramLongPollingBot {
         try {
             execute(s);
         } catch (TelegramApiException e) {
-            Log.error(e.getMessage());
-            e.printStackTrace();
+            handleSendException(chatId, e);
         }
     }
 
-    private void sendMsg(Long ChatId, String text) {
+    private boolean sendMsg(Long ChatId, String text) {
+        if (!canSendTo(ChatId)) {
+            return false;
+        }
         if (text.length() > 4096) {
             String text1 = text.substring(0, 4095);
             String text2 = text.substring(4095);
-            sendMsg(ChatId, text1);
-            sendMsg(ChatId, text2);
+            return sendMsg(ChatId, text1) && sendMsg(ChatId, text2);
         } else {
             SendMessage s = new SendMessage();
             s.setChatId(ChatId); // Боту может писать не один человек, и поэтому чтобы отправить сообщение, грубо говоря нужно узнать куда его отправлять
             s.setText(text);
             try {
                 execute(s);
+                return true;
             } catch (TelegramApiException e) {
-                Log.error(e.getMessage());
-                e.printStackTrace();
+                handleSendException(ChatId, e);
+                return false;
             }
         }
+    }
+
+    boolean canSendTo(Long chatId) {
+        return !unavailableChats.contains(chatId);
+    }
+
+    private void handleSendException(Long chatId, TelegramApiException exception) {
+        if (isForbidden(exception)) {
+            if (unavailableChats.add(chatId)) {
+                Log.error("Telegram запретил отправку в чат " + chatId
+                        + ". Автоматическая рассылка для чата отключена.");
+                executeUpdate("UPDATE CHATS SET NEED_IN_SENDING = 0 WHERE ID = " + chatId);
+            }
+            return;
+        }
+
+        Log.error("Ошибка отправки в чат " + chatId + ": " + getRootCauseMessage(exception));
+    }
+
+    private boolean isForbidden(TelegramApiException exception) {
+        return exception instanceof TelegramApiRequestException
+                && Integer.valueOf(403).equals(((TelegramApiRequestException) exception).getErrorCode());
+    }
+
+    private String getRootCauseMessage(Throwable throwable) {
+        Throwable cause = throwable;
+        while (cause.getCause() != null) {
+            cause = cause.getCause();
+        }
+        String message = cause.getMessage();
+        return cause.getClass().getSimpleName() + (message == null ? "" : ": " + message);
     }
 
     public void sendKeyBoard(Long chatId, String text, List<String> buttons) {
@@ -743,7 +806,7 @@ public class Example extends TelegramLongPollingBot {
         try {
             execute(sendMessage);
         } catch (TelegramApiException e) {
-            e.printStackTrace();
+            handleSendException(chatId, e);
         }
     }
 
@@ -964,10 +1027,13 @@ public class Example extends TelegramLongPollingBot {
     }
 
     void sendInfoAboutMolitva(Long chat, String query, String firstMsg, String emptyMsg) {
+        if (!canSendTo(chat)) {
+            return;
+        }
         try {
             ResultSet rs = getResultSet(query);
             boolean first = true;
-            while (rs.next()) {
+            while (canSendTo(chat) && rs.next()) {
                 if (first) {
                     sendMsg(chat, firstMsg);
                     first = false;
@@ -986,10 +1052,13 @@ public class Example extends TelegramLongPollingBot {
         }
     }
     void sendInfoAboutMolodezhMolitva(Long chat, String query, String firstMsg, String emptyMsg) {
+        if (!canSendTo(chat)) {
+            return;
+        }
         try {
             ResultSet rs = getChurchResultSet(query);
             boolean first = true;
-            while (rs.next()) {
+            while (canSendTo(chat) && rs.next()) {
                 if (first) {
                     sendMsg(chat, firstMsg);
                     first = false;
@@ -1009,6 +1078,9 @@ public class Example extends TelegramLongPollingBot {
     }
 
     void sendInfoAboutMesto(Long chat, String mesto, String emptyMsg) {
+        if (!canSendTo(chat)) {
+            return;
+        }
         try {
             String query = buildBibleTextQuery(mesto);
             ResultSet rs = getResultSet(query);
@@ -1036,9 +1108,12 @@ public class Example extends TelegramLongPollingBot {
     }
 
     void sendInfoAboutPlan(Long chat, String query, String firstMsg, String emptyMsg, boolean sendBible) {
+        if (!canSendTo(chat)) {
+            return;
+        }
         try {
             ResultSet rs = getResultSet(query);
-            while (rs.next()) {
+            while (canSendTo(chat) && rs.next()) {
                 sendMsg(chat, firstMsg);
                 for (int i = 1; i <= 3; i++) {
                     sendMsg(chat, rs.getString(i));
@@ -1056,10 +1131,13 @@ public class Example extends TelegramLongPollingBot {
     }
 
     void sendInfoAboutPeople(Long chat, String query, String firstMsg, String vozrastText, String emptyMsg, boolean useId, boolean showBirthday) {
+        if (!canSendTo(chat)) {
+            return;
+        }
         try {
             ResultSet rs = getResultSet(query);
             boolean first = true;
-            while (rs.next()) {
+            while (canSendTo(chat) && rs.next()) {
                 if (first) {
                     sendMsg(chat, firstMsg);
                     first = false;
